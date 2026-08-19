@@ -311,7 +311,42 @@ export default function WaiverBoard({ rows, meta }: { rows: WaiverRow[]; meta: W
         empty="No players clear the evidence floor with the current filters."
       />
 
-      <h2 style={{ marginTop: 'var(--s7)' }}>Everyone available — {sorted.length} players</h2>
+      {/*
+        The filter has to be WHERE THE LIST IS.
+
+        Position chips and the search box sit in the controls row at the top of
+        the page — and then five tier sections run between them and this table,
+        so by the time a reader reaches the list of everyone available the
+        filter is a couple of thousand pixels behind them. Narrowing to tight
+        ends meant scrolling back up, filtering, and scrolling down again.
+
+        Same state as the top row, so the two are one filter reachable from two
+        places rather than two filters that can disagree.
+      */}
+      <div className="listhead">
+        <h2>Everyone available — {sorted.length} players</h2>
+        <div className="listfilter">
+          {POSITIONS.map((p) => (
+            <button
+              key={p}
+              className="chip"
+              data-pos
+              data-on={positions.has(p)}
+              style={{ ['--pos-color' as string]: positionColor(p) }}
+              onClick={() => toggle(p)}
+            >
+              {p}
+            </button>
+          ))}
+          <input
+            className="search"
+            type="search"
+            placeholder="name or team…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+        </div>
+      </div>
       <div className="tablewrap">
         <table>
           <thead>
@@ -332,7 +367,7 @@ export default function WaiverBoard({ rows, meta }: { rows: WaiverRow[]; meta: W
               const team = teamOf(r.team);
               return (
                 <tr key={r.playerId} style={{ ...teamStyle(r.team), ['--pos-color' as string]: positionColor(r.position) }}>
-                  <td className="l stripe">
+                  <td className="l stripe namecell">
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
                       <span className="pos-badge">{r.position}</span>
                       <PlayerHover facts={facts(r)}>

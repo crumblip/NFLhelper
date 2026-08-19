@@ -5,7 +5,6 @@ import {
   getNeighbours,
   type SeasonContext,
   type Support,
-  type Bands,
 } from '../../../lib/player';
 import WeeklyBars from './weekly';
 import ToppsCard, { type ToppsSeason } from '../../ui/topps-card';
@@ -122,24 +121,6 @@ function cardSeasons(position: string, context: SeasonContext[]): ToppsSeason[] 
     }
     return { ...base, a: c.targets, b: c.receptions, c: c.receivingYards, d: c.receivingTds };
   });
-}
-
-/**
- * How close a comparable actually is, against this position's own distribution.
- *
- * Distance is in standardised feature units across role, scoring opportunity,
- * production and age. The bands travel with the outlook because they are
- * measured per position: the median neighbour sits at 1.36 for a receiver and
- * 1.97 for a quarterback, so one hard-coded set of cutoffs called 87% of
- * quarterbacks distant while saying nothing about any of them. Showing the rank
- * without showing the closeness would imply the fifth match is as informative as
- * the first.
- */
-function similarity(distance: number, bands: Bands): { label: string; cls: 'near' | 'mid' | 'far' } {
-  if (distance <= bands.close * 0.6) return { label: 'very close match', cls: 'near' };
-  if (distance <= bands.close) return { label: 'close match', cls: 'near' };
-  if (distance <= bands.loose) return { label: 'loose match', cls: 'mid' };
-  return { label: 'distant match', cls: 'far' };
 }
 
 /**
@@ -465,6 +446,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
           position={header.position}
           team={header.team}
           bye={header.bye}
+          espnId={header.espnId}
           adp={value?.adp ?? null}
           badge={
             value?.blendedVorp != null
@@ -1579,72 +1561,20 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
               </p>
             )}
 
-            {outlook!.nearest.length > 0 && (
-              <>
-                <h3 className="outlook-h">
-                  {outlook!.sparse
-                    ? 'Nearest, and none of them close'
-                    : 'Closest matches, most similar first'}
-                </h3>
-                <div className="comp-head">
-                  <span />
-                  <span>Player and season</span>
-                  <span>That season</span>
-                  <span>The year after</span>
-                </div>
-                <div className="comps">
-                  {outlook!.nearest.slice(0, 6).map((c, idx) => {
-                    const sim = similarity(c.distance, outlook!.bands);
-                    return (
-                      <div className="comp" key={`${c.name}-${c.season}`}>
-                        <span className="comp-rank">{idx + 1}</span>
-                        <span className="comp-id">
-                          <a className="comp-name name" href={`/player/${c.playerId}`}>
-                            {c.name}
-                          </a>
-                          <span className="comp-meta">
-                            his {c.season} season · <b className={sim.cls}>{sim.label}</b>
-                          </span>
-                        </span>
-                        <span className="comp-then">
-                          {c.ownPoints.toFixed(0)}
-                          <small>{c.ownPpg.toFixed(1)} / game</small>
-                        </span>
-                        <span className={`comp-next${c.nextPlayed ? '' : ' gone'}`}>
-                          {c.nextPlayed ? c.nextPoints.toFixed(0) : '—'}
-                          <small>
-                            {c.nextPlayed
-                              ? `${c.nextPpg.toFixed(1)} / game, ${c.nextGames}g`
-                              : 'never played again'}
-                          </small>
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-                <p className="legend">
-                  Read row one as: <strong>{outlook!.nearest[0]!.name}</strong> scored{' '}
-                  {outlook!.nearest[0]!.ownPoints.toFixed(0)} in {outlook!.nearest[0]!.season} from{' '}
-                  {outlook!.sparse
-                    ? 'the profile least unlike this one — which is not the same as a close one —'
-                    : 'a profile close to this one,'}{' '}
-                  and then{' '}
-                  {outlook!.nearest[0]!.nextPlayed ? (
-                    <>
-                      scored <strong>{outlook!.nearest[0]!.nextPoints.toFixed(0)}</strong> in{' '}
-                      {outlook!.nearest[0]!.season + 1}
-                    </>
-                  ) : (
-                    <>never played again</>
-                  )}
-                  . Closeness is measured across role, scoring opportunity, production, availability
-                  and age, against the spread this position actually shows — a &ldquo;close
-                  match&rdquo; means close <em>for a {header.position}</em>. His own earlier seasons
-                  are excluded: they are trivially the nearest profile to him and would not be an
-                  answer to the question.
-                </p>
-              </>
-            )}
+            {/*
+              THE NAMED-COMPARISON LIST IS GONE, deliberately.
+
+              It listed the six nearest historical seasons by player and showed
+              what each did the following year. The RANGE above is the useful
+              half of that machinery — it is a distribution of outcomes, and it
+              is what the backtest actually validates. The list was six rows of
+              other men's names, which invites reading one analogy as a forecast
+              ("he is the next Rhamondre Stevenson") when the model is making no
+              such claim about any individual comparable.
+
+              The comparables themselves still do all the work; only the roster
+              of names is off the page. Nothing else in the panel changes.
+            */}
           </section>
         </>
       )}

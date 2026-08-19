@@ -248,7 +248,6 @@ export default function BoardTable({ rows }: { rows: BoardRow[] }) {
                 separate evidence.
               */}
               {header('outlookPctile', 'OUTLOOK', 'How players who looked like him turned out, on one scale from bust to breakout. 0 means almost all of them disappointed, 100 means almost all of them hit. Ranked against other players at HIS position going around the same time, because the raw rates are not comparable between positions. WHERE TO USE IT: from round 11 on it is the best column on this board, twice as good as draft order at picking out who returns value. Through the middle rounds it is not worth reading — nothing on this board is, which is a fact about the middle of the draft rather than about this column.')}
-              <th className="l">Read</th>
             </tr>
           </thead>
           <tbody>
@@ -259,9 +258,24 @@ export default function BoardTable({ rows }: { rows: BoardRow[] }) {
                   key={r.playerId}
                   style={{ ...teamStyle(r.team), ['--pos-color' as string]: positionColor(r.position) }}
                 >
-                  <td>{r.adp.toFixed(1)}</td>
+                  <td className="col-adp">{r.adp.toFixed(1)}</td>
                   <td><span className="pos-badge">{r.position}</span></td>
-                  <td className="l stripe">
+                  {/*
+                    THE READ IS ON THE HOVER, and nowhere in the grid.
+
+                    It has now been tried as its own column (a wrapped sentence
+                    at the far right of sixteen numeric ones) and as a second
+                    line under the name. Both cost vertical space on every row
+                    to show a sentence that is identical for large groups of
+                    players — 48 of 185 read "the case cuts both ways at this
+                    price" — so the board paid for it 185 times and learned
+                    something new about 11 of them.
+
+                    A board is for ranking; the read is for one player at a
+                    time. It lives on the hover card, which opens on focus as
+                    well as on pointer, so it still costs no click.
+                  */}
+                  <td className="l stripe ident">
                     <PlayerHover facts={facts(r)}>
                       <a className="name" href={`/player/${r.playerId}`}>{r.name}</a>
                     </PlayerHover>
@@ -278,27 +292,47 @@ export default function BoardTable({ rows }: { rows: BoardRow[] }) {
                     </span>
                   </td>
                   <td className="muted">{r.bye ?? '—'}</td>
-                  <td>{fmt(r.impliedPoints)}</td>
-                  <td>{fmt(r.adpEquivalent, 1)}</td>
-                  <td>
+                  <td className="col-secondary grp">{fmt(r.impliedPoints)}</td>
+                  <td className="col-secondary">{fmt(r.adpEquivalent, 1)}</td>
+                  <td className="col-secondary">
                     <span className={`gap ${r.slotGap === null ? 'na' : r.slotGap > 0 ? 'pos' : 'neg'}`}>
                       {r.slotGap === null ? 'no signal' : signed(r.slotGap)}
                     </span>
                   </td>
-                  <td>{r.usageGrade === null ? <span className="muted">—</span> : r.usageGrade}</td>
-                  <td>
+                  <td className="col-secondary grp">{r.usageGrade === null ? <span className="muted">—</span> : r.usageGrade}</td>
+                  <td className="col-secondary">
                     {r.usageGap === null ? (
                       <span className="muted">—</span>
                     ) : (
                       <span className={`gap ${r.usageGap > 0 ? 'pos' : 'neg'}`}>{signed(r.usageGap, 0)}</span>
                     )}
                   </td>
-                  <td>
+                  <td className="grp">
+                    {/*
+                      VALUE, encoded by LENGTH rather than by a coloured box.
+
+                      A filled pill says "this number is important" and nothing
+                      else — it cannot show that +133 is four times +33, so the
+                      reader has to read every figure to rank them. A bar does
+                      that at a glance, and length is the strongest visual
+                      encoding there is; colour is left carrying only the sign,
+                      which the printed +/- already carries too.
+
+                      Scaled against a fixed 135, which is the top of the
+                      board's range, so the bars mean the same thing on every
+                      sort and filter. A relative scale would silently re-length
+                      every bar whenever the visible set changed.
+                    */}
                     {r.blendedVorp === null ? (
                       <span className="muted">—</span>
                     ) : (
-                      <span className={`gap ${r.blendedVorp > 0 ? 'pos' : 'neg'} value`}>
-                        {r.blendedVorp.toFixed(0)}
+                      <span className={`valuecell ${r.blendedVorp > 0 ? 'pos' : 'neg'}`}>
+                        <span className="valuenum">{r.blendedVorp.toFixed(0)}</span>
+                        <span
+                          className="valuebar"
+                          style={{ width: `${Math.min(100, (Math.abs(r.blendedVorp) / 135) * 100)}%` }}
+                          aria-hidden
+                        />
                       </span>
                     )}
                   </td>
@@ -318,14 +352,14 @@ export default function BoardTable({ rows }: { rows: BoardRow[] }) {
                     board rather than about whether he is a good pick, and Start %
                     is the projection restated in weekly units.
                   */}
-                  <td>
+                  <td className="col-secondary">
                     {r.vona === null ? (
                       <span className="muted">—</span>
                     ) : (
                       <span className={r.vona >= 25 ? 'gap pos' : ''}>{r.vona.toFixed(0)}</span>
                     )}
                   </td>
-                  <td>
+                  <td className="col-secondary">
                     {r.startableRate === null ? (
                       <span className="muted">—</span>
                     ) : (
@@ -336,7 +370,7 @@ export default function BoardTable({ rows }: { rows: BoardRow[] }) {
                     The two halves live on the hover so the axis can be taken
                     apart, but only the axis is ranked and sorted.
                   */}
-                  <td>
+                  <td className="col-secondary">
                     {r.outlookPctile === null ? (
                       <span className="muted">—</span>
                     ) : (
@@ -358,44 +392,6 @@ export default function BoardTable({ rows }: { rows: BoardRow[] }) {
                       </Tip>
                     )}
                   </td>
-                  <td className="l readcell">
-                    {/*
-                      Only the three most notable chips.
-
-                      A well-described player carries six, which wrapped onto
-                      three lines and pushed every row past 100px — a dense board
-                      turning into a list of cards. The chips are filters and a
-                      summary now that the case carries the actual verdict, so
-                      the tail belongs on his page rather than in the grid. Tags
-                      arrive sorted by weight, so the three shown are the three
-                      that matter.
-                    */}
-                    {r.tags.length === 0 ? (
-                      <span className="muted">—</span>
-                    ) : (
-                      r.tags.slice(0, 3).map((t) => (
-                        <Tip key={t.id} content={t.detail}>
-                          <button
-                            className={
-                              `tag k-${t.kind}` +
-                              (isVerdict(t.id) ? ` verdict-${t.id}` : '') +
-                              (activeTag === t.id ? ' on' : '')
-                            }
-                            onClick={() => setActiveTag(activeTag === t.id ? null : t.id)}
-                          >
-                            {t.label}
-                          </button>
-                        </Tip>
-                      ))
-                    )}
-                    {r.tags.length > 3 && (
-                      <Tip content={r.tags.slice(3).map((t) => t.label).join(' · ')}>
-                        <a className="tag tag-more" href={`/player/${r.playerId}`}>
-                          +{r.tags.length - 3}
-                        </a>
-                      </Tip>
-                    )}
-                  </td>
                 </tr>
               );
             })}
@@ -403,22 +399,19 @@ export default function BoardTable({ rows }: { rows: BoardRow[] }) {
         </table>
       </div>
 
-      <p className="legend">
-        <code>VALUE</code> is the draft order — points above the freely available player at that
-        position. <code>Gap vs ADP</code> is whether he is cheap at his price, which is a different
-        question and a secondary one.{' '}
-        <code>Impl pts</code> comes only from posted props — never from a projection or a ranking.
-        Players marked <code>no props</code> have no market for the stats that define their position
-        and are shown with ADP alone rather than a fabricated number.{' '}
-        <code>% covered</code> players are missing a category the market prices for their position,
-        so their points are a floor and they are excluded from ranking.{' '}
-        <code>+n wk1</code> means part of the projection was scaled up from a Week 1 line using the
-        market’s own season-to-game ratio of about 15.2 — not 17, because a season line already
-        prices in missed time.{' '}
-        <code>Usage</code> is a separate opinion built from what the player actually did on the
-        field. Hover any player for a summary, any column heading for what it measures, and any tag
-        for the claim behind it.{' '}
-        <a href="/legend">Full plain-language legend →</a>
+      {/*
+        The column glossary moved to /legend.
+
+        Fourteen lines of prose under the table explained what every column
+        meant to a reader who, by the time they had scrolled past the board to
+        reach it, had already worked most of it out — and it cost a screen of
+        players to say so. Every column heading already carries the same
+        explanation on hover, where the question is actually asked, and the
+        legend page carries the long form.
+      */}
+      <p className="legend legend-thin">
+        Hover any column heading for what it measures, and any player for the
+        model&rsquo;s read on him. <a href="/legend">Full plain-language legend →</a>
       </p>
     </>
   );

@@ -24,6 +24,16 @@ export interface PlayerHeader {
   bye: number | null;
   status: string | null;
   rookieSeason: number | null;
+  /**
+   * ESPN's player id, which is the key to a headshot.
+   *
+   * The card's own doc comment used to say there was no photo source in the
+   * database. There is: `players.espn_id` is populated for 1,083 of the 1,099
+   * skill players on file, and ESPN serves a cut-out portrait at a predictable
+   * URL from it. A card with a face on it is a different object from a card
+   * with two initials on it.
+   */
+  espnId: string | null;
 }
 
 /**
@@ -224,7 +234,7 @@ export function getPlayerDetail(
       `SELECT p.gsis_id AS playerId, p.display_name AS name,
               COALESCE(a.position, p.position) AS position,
               COALESCE(a.team, p.latest_team) AS team,
-              a.bye, p.status, p.rookie_season AS rookieSeason
+              a.bye, p.status, p.rookie_season AS rookieSeason, p.espn_id AS espnId
        FROM players p
        LEFT JOIN adp_raw a ON a.player_id = p.gsis_id AND a.year = ?
         AND a.format = ? AND a.teams = ?

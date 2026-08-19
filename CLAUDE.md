@@ -855,6 +855,12 @@ a week he was not startable.
 - **Search spans ~1000 players**, not the 179 the ADP feed prices: drafted ∪ had
   a role last season ∪ on a current depth chart. Anything meant to find
   undrafted players must use `lib/search.ts`, never the board.
+- **Colour ranks; it does not decorate.** One saturated mark per row-level
+  decision: VALUE keeps a filled pill, GEM/BUST keep ink, risk keeps a tint,
+  the selected filter keeps the accent. Everything else is ink on panel, and
+  hierarchy comes from type and spacing (#104). A small mark may be saturated;
+  a large fill may not. Dark tokens are validated against the OKLCH band — do
+  not raise them back toward the old values without re-running the check.
 - **UI is a hand-built design system in `app/globals.css`** (tokens, 32-team
   palette in `lib/teams.ts`, position colours) plus Radix headless primitives.
   Chakra has been considered and rejected TWICE, most recently during the shell
@@ -876,8 +882,16 @@ a week he was not startable.
   cannot share a declaration list. **An inline script in `<head>` stamps the
   saved theme before first paint**; a theme decided inside React lands a paint
   late and flashes white on every load.
+- **The board carries NO prose. The read is on the hover.** It has been tried
+  twice in the grid — as its own column and as a second line under the name —
+  and came out both times (#106, #107). A sentence costs vertical space on all
+  185 rows to print something identical across large groups of them: 48 rows
+  share one wording. A board is for ranking; the read is a one-player question,
+  and the hover card opens on focus as well as pointer so it still costs no
+  click. VALUE is a number over a magnitude bar, because a filled pill cannot
+  show that +133 is four times +33.
 - **The board is one line per row.** Tags are capped at three chips plus a "+N"
-  link to the player page. Six chips wrapped onto three lines and pushed rows
+  link to the player page (they live on the wire now; the draft board shows none). Six chips wrapped onto three lines and pushed rows
   past 100px, which turned a dense board into a list of cards; the chips are
   filters and a summary now that the case carries the verdict, so the tail
   belongs on the player page. Rows settle at 50px, twelve visible at once.
@@ -1983,6 +1997,158 @@ passing line reads as coverage (#95's lesson again). The one that catches it is
 the general invariant: **an arrow must name a man in this room or quote a number
 about himself** — the same standard as `every "measured" point quotes the number
 behind it`. All five negative-tested by reverting each fix in turn.
+
+### #104 — the colour system had no hierarchy, and the dark theme was measurably out of band
+
+Reported as "glowing colours everywhere… far too childish". Both halves were
+true and they were separate problems.
+
+**The dark palette was objectively too bright.** Run through the dataviz
+palette validator, all four meaning colours sat at **OKLCH L 0.72–0.80** against
+a `#14171e` panel, where the band a dark surface can carry is **0.48–0.67**.
+That is what "glow" is, measured. The replacement — `--value #1f9d80`,
+`--reach #d75d46`, `--accent #6b8fd8`, `--warn #bd8730` — passes all five
+checks: lightness band, chroma floor, red/green separation for colour-vision
+deficiency (deutan ΔE **9.2**, above the 8 target), normal-vision floor, and
+contrast against the surface. Text contrast lands 4.6–5.4:1, all above the 4.5
+needed; the old set ran 6.5–7.8:1, which is not "safer", it is over-bright.
+
+**The LIGHT palette already passed unchanged and was not touched.** Worth
+knowing before anyone re-tunes it: the fault was dark-only, which is exactly
+where a glow shows.
+
+**The real problem was quantity, not hue.** One board row carried up to six
+colour languages at once — 32 club colours (a 3px full-strength stripe down a
+52px row), 4 position colours as filled badges, green/red value pills in every
+one of sixteen numeric columns, an accent blue, an amber, and five tag "kinds"
+each with their own hue. None of it ranked anything.
+
+**The governing rule now: a small mark may be saturated, a large fill may not.**
+An 8px team dot is an index; 3×52px of the same colour is decoration. So:
+
+- **Tags went from five hues to one.** A chip is a FILTER — its job is "click me
+  to narrow the board" — so the colour that serves it is the *selected* state.
+  Risk keeps a tint because its content is a caution; GEM and BUST keep colour
+  because they are verdicts, but as ink and a hairline, not filled lozenges.
+- **Only VALUE, the column the board sorts on, keeps a filled pill.** Every other
+  numeric column states its number in ink. Sixteen shouting columns have no
+  emphasis at all. The pill shape stays where it stays, because shape is what
+  separates positive from negative for the ~8% of readers with a red/green
+  deficiency, and the sign is printed too.
+- **`.tag` was defined TWICE with different hues per kind**, so which colours a
+  chip wore depended on rule order. One definition now.
+- **Coloured glows deleted**: two radial accent washes lighting panels from a
+  corner, tinted drop shadows on the brand mark and primary button, the body
+  radial gradient, the team-dot ring.
+- **Three tiers of type across the sixteen columns** — price and VALUE at full
+  ink, diagnostics at 12.5px muted — plus hairline rules where the meaning
+  changes (identity · market · usage · verdict). **This is spacing and ink doing
+  the work colour was being asked to do**, which is the whole point.
+
+### #105 — the column called "Read" could not be read
+
+It showed three tag chips, so the actual read — the one sentence the whole case
+resolves to — was only reachable by opening the player. A column that needs a
+click to be read is not doing its job, and the three lozenges were most of the
+board's remaining colour.
+
+`value_scores.verdict` **is** the case headline (unified with `buildCase` in
+#86), is at most 69 characters, and separates properly: **11 distinct readings
+across 180 rows, largest bucket 48**. So it leads, in ink, clamped to two lines.
+The chips stay beneath it as the filter they are, capped at two. Rows go 52px →
+64px, and no verdict on the board is clipped.
+
+### #107 — the read came out of the grid entirely, and the board got its density back
+
+#106 moved the verdict from its own column to a second line under the player's
+name. Shown that, the user's answer was to remove it and use the space for
+players — which is the right call and worth recording as a finding rather than
+as a reversal: **the read is a one-player question and a board is a ranking
+tool.** A sentence on every row costs height 185 times to say something that is
+identical across large groups — 48 rows share one wording — so the board pays
+for it on every row and learns something new on a handful.
+
+It lives on the hover card, which opens on focus as well as on pointer, so it
+still costs no click. `toneOf`, `caseTone` and the `.read-line` rules came out
+with it; dead code is how `.tag` ended up defined twice with clashing hues.
+
+**The column glossary went to /legend** for the same reason: fourteen lines of
+prose UNDER the table, explaining columns to a reader who had already scrolled
+past 185 players to reach it. Every heading carries the same text on hover.
+
+Rows went **64px to 46px** and the screen holds 12 players instead of 8.
+
+**#108 — the name column sized itself to the longest name in the league.** Table
+auto-layout fits a column to its widest content, so the player column held
+**233px** for names that typically need about 120 — measured over the skill
+players on file, the median name is **13 characters** and the 95th percentile is
+**17**, but the maximum is **24** ("Marquez Valdes-Scantling"). Every ordinary
+row therefore sat in a pool of empty space before the team badge. Capped just
+past the 95th percentile at 132px with an ellipsis; the prose column absorbs the
+slack instead, which is the one that can use it.
+
+**#109 — the wire's position filter was 2,000px from the list it filtered.**
+The chips were in the controls row at the top of the page with five tier
+sections between them and "Everyone available", so narrowing to tight ends meant
+scrolling up, clicking, and scrolling back down. There is now a filter row on
+that table's own heading sharing the same state — one filter reachable from two
+places, not two that can disagree.
+
+### #106 — four surfaces that were decoration rather than information
+
+**The Read column could not be read, so it stopped being a column.** It held a
+wrapped sentence in a 260px box at the far right of sixteen numeric ones — a
+paragraph is the wrong shape for a table cell, because it breaks where the
+column ends rather than where the sense does, and it sat as far from the player
+it describes as the layout allowed. Name and verdict are ONE thing: who he is
+and what the model makes of him. They are now a primary and a secondary line in
+the identity column, where the sentence gets 300px, stays on one line, and sits
+where the eye already is. The board is 15 columns instead of 16 and rows came
+down 64px → 58px.
+
+Direction is a **2px hairline** beside the sentence, from `player_case.tone`
+(read from the stored case, never matched out of the verdict prose — that would
+be one quantity defined twice, #71). Five tones collapse to three marks, because
+the reader is scanning for "does the model like him", and the sentence carries
+everything past that.
+
+**VALUE is a magnitude bar now, not a pill.** A filled lozenge says "this number
+matters" and nothing else — it cannot show that +133 is four times +33, so
+ranking two players still meant reading both figures. Length can, and length is
+the strongest encoding available. The bar is scaled against a fixed 135 (the top
+of the board's range) rather than the visible maximum, so it means the same
+thing under every sort and filter; a relative scale would silently re-length
+every bar whenever the filter changed. Colour is left carrying only the sign,
+which the printed +/− carries as well.
+
+**The named-comparison list is off the player page.** The RANGE is the half of
+that machinery the backtest actually validates — it is a distribution of
+outcomes. The list was six rows of other men's names, which invites reading one
+analogy as a forecast ("he is the next Rhamondre Stevenson") when the model
+makes no claim about any individual comparable. The comparables still do all the
+work behind the range; only the roster of names is gone, along with
+`similarity()` and ~1.4KB of orphaned CSS — dead rules are how `.tag` ended up
+defined twice with different hues.
+
+**The card has a face on it.** Its own doc comment said there was no photo
+source in the database; there is, and there had been all along —
+`players.espn_id` covers **1,083 of 1,099** skill players and ESPN serves a
+cut-out portrait at a predictable URL. Two enormous initials read as a missing
+asset however they were dressed. The monogram survives as the fallback for the
+16 players with no id and for an image that 404s.
+
+The three print effects came off with it — a two-stop gradient, a halftone dot
+screen and a diagonal gloss sweep, all at full team saturation. Defensible
+behind two initials, indefensible behind a subject: a portrait needs a ground,
+not a pattern.
+
+**One trap worth keeping.** `loading="lazy"` deadlocked against the layout:
+width was `auto` against an unknown intrinsic size, so the element measured 0px
+wide, a zero-area element never satisfies the lazy loader, and the width
+therefore never resolved — the image sat at 0×294 forever with no error and no
+network request. A definite box (`width/height: 100%` + `object-fit: cover`)
+and no lazy attribute. Any future image sized from its own intrinsic dimensions
+can hit the same thing.
 
 ## Where things stand right now (end of the last session)
 - Board: **185 rows** after an ADP re-pull (was 179).

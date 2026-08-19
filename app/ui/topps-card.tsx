@@ -12,10 +12,16 @@ import { teamOf, teamStyle, positionColor } from '../../lib/teams';
  * team pennant along the bottom, and the name on a plate below the frame. The
  * back is card stock with a season-by-season stat table in a condensed face.
  *
- * There is no photograph because there is no photo source in the database, and a
- * broken image would be worse than none. The space is filled with the player's
- * initials set very large in the team's own colours, which reads as a deliberate
- * silhouette card rather than a missing asset.
+ * THERE IS A PHOTOGRAPH NOW. The old comment here said there was no photo
+ * source in the database and filled the frame with two enormous initials — which
+ * read as a missing asset however it was dressed up, because that is what it
+ * was. `players.espn_id` covers 1,083 of 1,099 skill players and ESPN serves a
+ * cut-out portrait from it, so the card carries a face and falls back to the
+ * monogram only when the id is absent or the image fails to load.
+ *
+ * The print-effect layers came off with it. A halftone dot screen, a diagonal
+ * gloss sweep and a two-stop gradient were three textures competing behind the
+ * subject at full team saturation; a portrait needs a ground, not a pattern.
  */
 
 export interface ToppsSeason {
@@ -46,6 +52,8 @@ export interface ToppsProps {
   blurb: string;
   rookieSeason: number | null;
   status: string | null;
+  /** ESPN player id — the key to the portrait. Null falls back to initials. */
+  espnId: string | null;
 }
 
 const initials = (name: string) =>
@@ -62,7 +70,17 @@ const num = (v: number | null, d = 0) => (v === null || Number.isNaN(v) ? '—' 
 
 export default function ToppsCard(p: ToppsProps) {
   const [flipped, setFlipped] = useState(false);
+  /*
+   * A missing portrait must not leave a broken-image glyph in the frame, and
+   * ESPN 404s for a handful of ids that exist in nflverse. `onError` swaps back
+   * to the monogram, so the fallback is the old card rather than a hole.
+   */
+  const [portraitFailed, setPortraitFailed] = useState(false);
   const team = teamOf(p.team);
+  const portrait =
+    p.espnId && !portraitFailed
+      ? `https://a.espncdn.com/i/headshots/nfl/players/full/${p.espnId}.png`
+      : null;
 
   return (
     <div
@@ -78,8 +96,26 @@ export default function ToppsCard(p: ToppsProps) {
       >
         {/* ---------------- front ---------------- */}
         <span className="topps-face" aria-hidden={flipped}>
-          <span className="topps-art">
-            <span className="topps-monogram">{initials(p.name)}</span>
+          <span className="topps-art" data-hasphoto={portrait !== null}>
+            {portrait ? (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img
+                className="topps-photo"
+                src={portrait}
+                alt=""
+                /*
+                 * NOT lazy. The card is the first thing on the player page, and
+                 * `loading="lazy"` deadlocked against the layout: width was
+                 * `auto` against an unknown intrinsic size, so the element
+                 * measured 0px wide, a zero-area element never satisfies the
+                 * lazy loader, and the width therefore never resolved.
+                 */
+                decoding="async"
+                onError={() => setPortraitFailed(true)}
+              />
+            ) : (
+              <span className="topps-monogram">{initials(p.name)}</span>
+            )}
 
             <span className="topps-pos">{p.position}</span>
 

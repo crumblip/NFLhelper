@@ -77,7 +77,9 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
     --bg: #0b0d11;
-    --bg-grad: radial-gradient(1200px 600px at 20% -10%, #171b23 0%, #0b0d11 60%);
+    /* No painted-on glow. A radial wash behind a data table is decoration
+       that competes with the one thing colour is for here. */
+    --bg-grad: none;
     --panel: #14171e;
     --panel-2: #171b23;
     --panel-hover: #1c212a;
@@ -88,18 +90,28 @@
     --muted: #8b93a3;
     --faint: #636b7b;
 
-    --value: #3fd39e;
-    --value-bg: #0e2d24;
-    --value-br: #1d5c48;
-    --reach: #ff7a5c;
-    --reach-bg: #331610;
-    --reach-br: #6b3021;
-    --accent: #7aa2ff;
-    --accent-bg: #17203a;
-    --accent-br: #2e4680;
-    --warn: #e8b45c;
-    --warn-bg: #322510;
-    --warn-br: #6b5222;
+    /* ---- the four meaning colours, measured into the dark band ----
+       The old set sat at OKLCH L 0.72-0.80 against a #14171e panel — well above
+       the 0.48-0.67 band a dark surface can carry — which is exactly what
+       "glowing" is. Validated with the dataviz palette checker: lightness band,
+       chroma floor, red/green separation for colour-vision deficiency (deutan
+       delta-E 9.2, above the 8 target), and contrast against the surface all
+       pass. The LIGHT palette already passed unchanged and is left alone.
+
+       The -bg fills are near-panel now rather than saturated blocks: a pill
+       should read as a pill, not as a highlighter. */
+    --value: #1f9d80;
+    --value-bg: #14211f;
+    --value-br: #24413a;
+    --reach: #d75d46;
+    --reach-bg: #211714;
+    --reach-br: #47281f;
+    --accent: #6b8fd8;
+    --accent-bg: #171c28;
+    --accent-br: #2c3854;
+    --warn: #bd8730;
+    --warn-bg: #201b13;
+    --warn-br: #423422;
 
     --shadow-1: 0 1px 2px rgb(0 0 0 / 40%);
     --shadow-2: 0 2px 6px rgb(0 0 0 / 45%), 0 8px 20px rgb(0 0 0 / 30%);
@@ -114,7 +126,9 @@
 }
 :root[data-theme='dark'] {
     --bg: #0b0d11;
-    --bg-grad: radial-gradient(1200px 600px at 20% -10%, #171b23 0%, #0b0d11 60%);
+    /* No painted-on glow. A radial wash behind a data table is decoration
+       that competes with the one thing colour is for here. */
+    --bg-grad: none;
     --panel: #14171e;
     --panel-2: #171b23;
     --panel-hover: #1c212a;
@@ -125,18 +139,28 @@
     --muted: #8b93a3;
     --faint: #636b7b;
 
-    --value: #3fd39e;
-    --value-bg: #0e2d24;
-    --value-br: #1d5c48;
-    --reach: #ff7a5c;
-    --reach-bg: #331610;
-    --reach-br: #6b3021;
-    --accent: #7aa2ff;
-    --accent-bg: #17203a;
-    --accent-br: #2e4680;
-    --warn: #e8b45c;
-    --warn-bg: #322510;
-    --warn-br: #6b5222;
+    /* ---- the four meaning colours, measured into the dark band ----
+       The old set sat at OKLCH L 0.72-0.80 against a #14171e panel — well above
+       the 0.48-0.67 band a dark surface can carry — which is exactly what
+       "glowing" is. Validated with the dataviz palette checker: lightness band,
+       chroma floor, red/green separation for colour-vision deficiency (deutan
+       delta-E 9.2, above the 8 target), and contrast against the surface all
+       pass. The LIGHT palette already passed unchanged and is left alone.
+
+       The -bg fills are near-panel now rather than saturated blocks: a pill
+       should read as a pill, not as a highlighter. */
+    --value: #1f9d80;
+    --value-bg: #14211f;
+    --value-br: #24413a;
+    --reach: #d75d46;
+    --reach-bg: #211714;
+    --reach-br: #47281f;
+    --accent: #6b8fd8;
+    --accent-bg: #171c28;
+    --accent-br: #2c3854;
+    --warn: #bd8730;
+    --warn-bg: #201b13;
+    --warn-br: #423422;
 
     --shadow-1: 0 1px 2px rgb(0 0 0 / 40%);
     --shadow-2: 0 2px 6px rgb(0 0 0 / 45%), 0 8px 20px rgb(0 0 0 / 30%);
@@ -208,11 +232,10 @@ body {
   width: 40px; height: 40px;
   display: grid; place-items: center;
   border-radius: 13px;
-  background: linear-gradient(150deg, var(--accent), color-mix(in srgb, var(--accent) 45%, #06070a));
+  background: var(--accent);
   color: #fff;
   font-family: var(--font-display);
   font-size: 19px; font-weight: 800; letter-spacing: 0.02em;
-  box-shadow: 0 6px 18px color-mix(in srgb, var(--accent) 38%, transparent);
   transition: transform 140ms cubic-bezier(.2,.7,.3,1);
 }
 .rail-brand:hover .rail-mark { transform: translateY(-1px) scale(1.03); }
@@ -419,9 +442,11 @@ h3 { font-size: 15px; font-weight: 650; margin: 0 0 var(--s2); letter-spacing: -
   min-width: 30px; height: 20px; padding: 0 6px;
   font-size: 10.5px; font-weight: 750; letter-spacing: 0.06em;
   border-radius: 5px;
-  background: color-mix(in srgb, var(--pos-color) 16%, transparent);
-  color: var(--pos-color);
-  border: 1px solid color-mix(in srgb, var(--pos-color) 34%, transparent);
+  /* Hue in the text and a hairline, not a filled block: four filled chips per
+     screen of rows is four more colour fields competing with the verdict. */
+  background: transparent;
+  color: color-mix(in srgb, var(--pos-color) 78%, var(--text-2));
+  border: 1px solid color-mix(in srgb, var(--pos-color) 26%, var(--border));
 }
 
 .team-badge {
@@ -432,7 +457,7 @@ h3 { font-size: 15px; font-weight: 650; margin: 0 0 var(--s2); letter-spacing: -
 .team-dot {
   width: 8px; height: 8px; border-radius: 2px;
   background: linear-gradient(135deg, var(--team-bright) 50%, var(--team-2) 50%);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--team-bright) 40%, transparent);
+  box-shadow: none;
   flex: none;
 }
 
@@ -460,8 +485,62 @@ h3 { font-size: 15px; font-weight: 650; margin: 0 0 var(--s2); letter-spacing: -
   border: 1px solid transparent;
 }
 .gap.value { font-size: 15px; font-weight: 750; min-width: 48px; letter-spacing: -0.015em; }
+/* THE ONE PLACE COLOUR IS ALLOWED TO SHOUT, and even here it does not need to
+   say the same thing three times.
+
+   A pill wore hue in the text, the fill AND the border. With sixteen numeric
+   columns on the board that is up to sixteen coloured lozenges a row. The fill
+   is now barely off the panel and the border is a hairline, so the pill still
+   reads as a pill — which is the point, because shape is what separates a
+   positive from a negative for the ~8% of readers with a red/green deficiency,
+   and the sign is always printed as well. */
 .gap.pos { color: var(--value); background: var(--value-bg); border-color: var(--value-br); }
 .gap.neg { color: var(--reach); background: var(--reach-bg); border-color: var(--reach-br); }
+
+/* VALUE — the column the board sorts on — is a number over a magnitude bar.
+
+   It used to be a bold figure in a filled, rounded pill. That made it loud
+   without making it informative: a lozenge cannot show that +133 is four times
+   +33, so ranking two players still meant reading both numbers. Length can, and
+   length is the strongest encoding available — so the bar does the standing out
+   and the colour is left carrying only the sign, which the printed +/- carries
+   as well for anyone who cannot separate the hues.
+
+   Right-aligned to the column, growing leftward, so the numbers stay on the
+   same axis and the bars form a readable profile down the page. */
+.valuecell {
+  display: inline-block;
+  position: relative;
+  min-width: 62px;
+  padding-bottom: 5px;
+  text-align: right;
+  line-height: 1.15;
+}
+.valuenum {
+  font-size: 15px; font-weight: 700;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+.valuecell.pos .valuenum { color: var(--value); }
+.valuecell.neg .valuenum { color: var(--reach); }
+.valuebar {
+  position: absolute; right: 0; bottom: 0;
+  height: 3px; border-radius: 2px;
+  background: currentColor;
+  opacity: 0.55;
+}
+.valuecell.pos { color: var(--value); }
+.valuecell.neg { color: var(--reach); }
+
+/* Every other numeric column states its number in ink, because a table where
+   sixteen columns all shout has no emphasis at all. */
+td .gap:not(.value):not(.big) {
+  background: transparent;
+  border-color: transparent;
+  padding-left: 0; padding-right: 0;
+  min-width: 44px;
+}
 .gap.na { color: var(--faint); background: transparent; font-weight: 400; border: none; }
 .gap.big {
   font-size: 26px; padding: 10px 18px; min-width: 104px; text-align: center;
@@ -533,13 +612,37 @@ table {
 }
 
 th, td {
-  padding: 10px 10px;
+  /* 7px, not 10. The board is read by scanning a long list, and three pixels a
+     row is another player and a half on screen. */
+  padding: 7px 10px;
   text-align: right;
   white-space: nowrap;
   border-bottom: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
   vertical-align: middle;
 }
 tbody tr:last-child td { border-bottom: none; }
+
+/* ---- hierarchy across sixteen numeric columns ----------------------------
+   Every column was set at the same size, weight and ink, so the board had no
+   emphasis: the price, the number it sorts on, and a diagnostic that only
+   matters in round eleven all read equally loud. Three tiers now, by what a
+   drafter is actually scanning for.
+
+   This is spacing and ink doing the work that colour was being asked to do —
+   which is the whole point of the pass. A table organised by weight does not
+   need sixteen tinted lozenges to be legible.
+   ----------------------------------------------------------------------- */
+
+/* Tier 1 — the price and the number the board is sorted on. */
+tbody td.col-adp { font-size: 14px; font-weight: 620; color: var(--text); }
+
+/* Tier 3 — working numbers. Present, checkable, not competing. */
+tbody td.col-secondary { color: var(--muted); font-size: 12.5px; }
+
+/* A hairline where the meaning of the columns changes: identity, then what the
+   market says, then what the field says, then the verdict. Cheaper than a
+   header group row and it survives horizontal scrolling. */
+th.grp, td.grp { border-left: 1px solid color-mix(in srgb, var(--border) 60%, transparent); }
 th:first-child, td:first-child { padding-left: var(--s4); }
 th:last-child, td:last-child { padding-right: var(--s4); }
 th.l, td.l { text-align: left; }
@@ -572,15 +675,33 @@ tbody tr { transition: background 110ms ease; }
 tbody tr:nth-child(even) { background: color-mix(in srgb, var(--muted) 3.5%, transparent); }
 tbody tr:hover { background: color-mix(in srgb, var(--accent) 8%, transparent); }
 
-/* The team stripe turns a wall of rows into something scannable by club. */
+/* The team stripe turns a wall of rows into something scannable by club — but
+   at 3px of full-strength club colour down a 52px row it was the largest area
+   of arbitrary hue on the board, thirty-two ways at once. Mixed most of the way
+   into the border it still groups the eye by club without competing with the
+   one colour that carries a verdict. The dot in the team column stays vivid:
+   8px of saturation reads as an index, 3x52px reads as decoration. */
 td.stripe {
   position: relative;
-  border-left: 3px solid var(--team-bright);
+  border-left: 2px solid color-mix(in srgb, var(--team-bright) 42%, var(--border));
 }
 
 .name {
   color: var(--text); text-decoration: none; font-weight: 560;
   letter-spacing: -0.01em;
+  /* The column sized itself to the LONGEST name on the page and every shorter
+     one then sat in a pool of empty space before the team badge. Measured over
+     the skill players on file: the median name is 13 characters and the 95th
+     percentile is 17, but the maximum is 24 ("Marquez Valdes-Scantling"), so
+     the column was carrying nearly double the width it needed for a typical
+     row. Capped just past the 95th percentile; the handful that overflow
+     ellipsize and keep their full name on the hover card. */
+  display: inline-block;
+  max-width: 132px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: bottom;
 }
 .name:hover { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
 
@@ -614,19 +735,15 @@ table.mini tr.rule td { border-top: 1px solid var(--border); padding-top: 9px; }
   white-space: nowrap;
   transition: transform 110ms ease, filter 110ms ease;
 }
-.tag:hover { transform: translateY(-1px); filter: brightness(1.08); }
-.tag.on { box-shadow: 0 0 0 2px var(--accent); }
-
-.tag.k-price { background: var(--accent-bg); color: var(--accent); border-color: var(--accent-br); font-weight: 650; }
-.tag.k-role { background: color-mix(in srgb, var(--value) 12%, transparent); color: var(--value); border-color: var(--value-br); }
-.tag.k-opportunity { background: var(--value-bg); color: var(--value); border-color: var(--value-br); font-weight: 650; }
-.tag.k-risk { background: var(--reach-bg); color: var(--reach); border-color: var(--reach-br); font-weight: 650; }
-.tag.k-coverage { background: color-mix(in srgb, var(--muted) 12%, transparent); color: var(--muted); border-color: var(--border); }
+/* The canonical .tag rules live in "the read column" further down. This block
+   used to define the component a second time with a DIFFERENT hue per kind, so
+   which colours a chip wore depended on rule order rather than on meaning. */
 
 /* GEM and BUST are verdicts rather than attributes, so they lead the cell. */
-.tag.verdict-gem, .tag.verdict-bust { display: block; width: fit-content; letter-spacing: 0.05em; font-weight: 750; }
-.tag.verdict-gem { background: var(--value); color: #fff; border-color: transparent; }
-.tag.verdict-bust { background: var(--reach); color: #fff; border-color: transparent; }
+/* Layout only. The colours for these two live with the other .tag rules
+   further down — a solid fill here was overridden there, so the component had
+   two appearances depending on rule order. */
+.tag.verdict-gem, .tag.verdict-bust { display: block; width: fit-content; letter-spacing: 0.05em; }
 
 .tagfilter {
   background: var(--accent-bg);
@@ -795,30 +912,43 @@ table.mini tr.rule td { border-top: 1px solid var(--border); padding-top: 9px; }
 .topps-back-name,
 .topps-back-meta { display: block; }
 
+/* A ground for the subject, not a pattern competing with him.
+
+   The frame used to stack three print effects — a two-stop gradient, a halftone
+   dot screen and a diagonal gloss sweep — at full team saturation. That is
+   defensible behind two initials and indefensible behind a face: the portrait
+   is the subject and everything else in the frame is background. One quiet
+   vertical wash in the club colour, darker at the foot so the pennant type has
+   something to sit on. */
 .topps-art {
   position: relative;
   height: 296px;
   border-radius: 5px;
   overflow: hidden;
   background:
-    linear-gradient(165deg,
-      color-mix(in srgb, var(--team) 92%, #fff 8%) 0%,
-      color-mix(in srgb, var(--team) 100%, #000) 58%,
-      color-mix(in srgb, var(--team) 62%, #000) 100%);
-  border: 2px solid var(--team-2);
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--team) 62%, #0d1016) 0%,
+      color-mix(in srgb, var(--team) 40%, #0d1016) 62%,
+      #0d1016 100%);
+  border: 1px solid color-mix(in srgb, var(--team-2) 55%, #0d1016);
 }
 
-/* Halftone dots, the way the era printed a colour field. */
-.topps-art::before {
-  content: ''; position: absolute; inset: 0;
-  background-image: radial-gradient(circle at center, rgb(255 255 255 / 16%) 1px, transparent 1.4px);
-  background-size: 7px 7px;
-  opacity: 0.55;
-}
-/* Diagonal sweep, the way the era broke up that field. */
-.topps-art::after {
-  content: ''; position: absolute; inset: -20% -40%;
-  background: linear-gradient(72deg, transparent 42%, rgb(255 255 255 / 13%) 47%, rgb(255 255 255 / 13%) 53%, transparent 58%);
+/* The portrait. ESPN serves a cut-out on a transparent ground, so it sits
+   directly on the field with no card of its own — object-position pulls the
+   crop up because these are shoulders-up and centring leaves a gap of forehead
+   under the top badges. */
+.topps-photo {
+  position: absolute;
+  inset: 0;
+  /* A definite box, not one derived from the image's intrinsic size. The frame
+     is portrait and the source is 600x436 landscape, so cover fills it and
+     crops the transparent margin first; the bias upward keeps the face clear of
+     the pennant rather than centring it behind the type. */
+  width: 100%; height: 100%;
+  object-fit: cover;
+  object-position: center 22%;
+  filter: drop-shadow(0 8px 16px rgb(0 0 0 / 40%));
+  z-index: 1;
 }
 
 .topps-monogram {
@@ -1252,37 +1382,9 @@ table.mini tr.rule td { border-top: 1px solid var(--border); padding-top: 9px; }
   font-variant-numeric: normal; letter-spacing: 0.04em;
 }
 
-/* Comparables table. Every column carries a header where it appears rather than
-   being explained in a paragraph underneath (bug #43). */
-.comp-head {
-  display: grid; grid-template-columns: 20px 1fr 78px 104px;
-  gap: var(--s3); padding: 0 10px var(--s1);
-  font-size: 9.5px; font-weight: 700; letter-spacing: 0.07em;
-  text-transform: uppercase; color: var(--faint);
-}
-.comp-head span:nth-child(3), .comp-head span:nth-child(4) { text-align: right; }
-.comps { display: grid; gap: 6px; }
-.comp {
-  display: grid; grid-template-columns: 20px 1fr 78px 104px;
-  align-items: center; gap: var(--s3);
-  padding: 7px 10px; border-radius: var(--r-sm);
-  background: var(--panel-2); border: 1px solid var(--border);
-  font-size: 12.5px;
-}
-.comp-name { font-weight: 600; }
-.comp-season { color: var(--faint); font-size: 11px; font-variant-numeric: tabular-nums; }
-.comp-then, .comp-next {
-  text-align: right; font-weight: 700; font-variant-numeric: tabular-nums;
-}
-.comp-then { color: var(--muted); font-weight: 600; }
-.comp-then small, .comp-next small {
-  display: block; font-size: 9px; font-weight: 650; letter-spacing: 0.04em;
-  color: var(--faint); text-transform: none;
-}
-/* A comparable who never played again is the outcome the old pool deleted. It
-   is shown, and shown as different from a low score. */
-.comp-next.gone { color: var(--reach); }
-.comp-next.gone small { color: var(--reach); opacity: 0.8; }
+/* The comparables TABLE styles are gone with the named-comparison list they
+   dressed. Dead rules are how .tag ended up defined twice with different
+   hues, so they come out with the markup rather than being left to rot. */
 
 /* Provenance, available but not dumped on the page by default. */
 details.prov { margin-top: var(--s3); }
@@ -1712,9 +1814,9 @@ details.prov > div { margin-top: var(--s3); }
   margin-bottom: var(--s5);
   border-radius: var(--r-xl);
   border: 1px solid var(--border);
-  background:
-    radial-gradient(760px 340px at 88% -30%, color-mix(in srgb, var(--accent) 18%, transparent), transparent 70%),
-    linear-gradient(180deg, var(--panel), var(--panel-2));
+  /* Flat panel. The corner wash was a coloured light source behind text — the
+     literal glow, and it competed with the value palette for no information. */
+  background: var(--panel);
   box-shadow: var(--shadow-2);
   position: relative;
   overflow: hidden;
@@ -1769,9 +1871,11 @@ details.prov > div { margin-top: var(--s3); }
 .btn-primary {
   background: var(--accent);
   color: #fff;
-  box-shadow: 0 4px 14px color-mix(in srgb, var(--accent) 34%, transparent);
+  /* Elevation, not a halo. A tinted shadow makes a button look lit from within,
+     which is the cartoon note the rest of this pass is removing. */
+  box-shadow: var(--shadow-1);
 }
-.btn-primary:hover { box-shadow: 0 8px 22px color-mix(in srgb, var(--accent) 42%, transparent); }
+.btn-primary:hover { box-shadow: var(--shadow-2); }
 .btn-ghost {
   background: var(--panel);
   color: var(--text-2);
@@ -1952,11 +2056,42 @@ td { font-size: 13px; }
    and the chips are filters rather than the read itself now that the case
    carries the verdict.
    ----------------------------------------------------------------------- */
-td.readcell {
-  max-width: 260px;
-  white-space: normal;
+/* THE NAME COLUMN SIZES TO THE NAME.
+
+   Table auto-layout hands surplus width to whichever columns hold the most
+   text, so on the wire — where a prose column sits at the far end — the player
+   column was inflating to 233px for a name that needs about 120, opening a gap
+   between the name and the team badge wide enough to lose the row across.
+   `width: 1%` with nowrap is the standard way to say "take exactly what you
+   need"; the prose column absorbs the slack instead, which is the one that can
+   use it. */
+td.ident, td.namecell {
+  width: 1%;
+  white-space: nowrap;
 }
-td.readcell > * { margin: 1px 3px 1px 0; }
+td.readcell { width: 100%; }
+
+/* The heading and the filter for the list beneath it, on one line. Wraps to two
+   on a narrow screen rather than pushing the search box off the edge. */
+.listhead {
+  display: flex; align-items: baseline; justify-content: space-between;
+  flex-wrap: wrap; gap: var(--s3);
+  margin-top: var(--s7); margin-bottom: var(--s3);
+}
+.listhead h2 { margin: 0; }
+.listfilter { display: flex; align-items: center; gap: var(--s2); flex-wrap: wrap; }
+.listfilter .search { min-width: 170px; }
+
+/* Identity is the name and nothing else.
+
+   The verdict was tried here as a second line and came out: it cost a line of
+   height on all 185 rows to print a sentence that is identical across large
+   groups of them — 48 rows share one wording — so the board paid for it every
+   row and learned something new on a handful. It lives on the hover card, which
+   opens on focus as well as on pointer and therefore still costs no click.
+
+   No min-width: that was reserving room for the sentence, and with the sentence
+   gone it was holding the same gap open that the wire had. */
 .tag {
   display: inline-flex; align-items: center;
   padding: 3px 9px;
@@ -1976,24 +2111,38 @@ td.readcell > * { margin: 1px 3px 1px 0; }
   border-color: color-mix(in srgb, var(--accent) 45%, transparent);
   color: var(--accent);
 }
-.tag.k-price { background: color-mix(in srgb, var(--accent) 8%, var(--panel-2)); }
-.tag.k-risk  { background: color-mix(in srgb, var(--reach) 9%, var(--panel-2)); color: var(--reach); border-color: color-mix(in srgb, var(--reach) 22%, var(--border)); }
-.tag.k-opportunity { background: color-mix(in srgb, var(--warn) 10%, var(--panel-2)); color: var(--warn); border-color: color-mix(in srgb, var(--warn) 24%, var(--border)); }
+/* FIVE tag kinds carried five different hues — price blue, role green,
+   opportunity amber, risk red, coverage grey — so a well-described player wore
+   a small rainbow, and none of it was a verdict. A chip here is a FILTER: its
+   job is "click me to narrow the board", and the colour that serves that job is
+   the selected state, which is why .tag.on owns the only accent.
+
+   Risk keeps a tint because its CONTENT is a caution and that is a meaning
+   colour is for. Everything else is ink on panel. */
+.tag.k-risk {
+  color: color-mix(in srgb, var(--reach) 72%, var(--text-2));
+  border-color: color-mix(in srgb, var(--reach) 26%, var(--border));
+}
+/* GEM and BUST are verdicts, so they are the two chips that have earned a
+   colour. Ink and a hairline rather than a filled lozenge — the weight and the
+   word carry the emphasis, the hue only says which direction. */
 .tag.verdict-gem {
-  background: color-mix(in srgb, var(--value) 14%, transparent);
+  background: transparent;
   color: var(--value);
-  border-color: color-mix(in srgb, var(--value) 40%, transparent);
-  font-weight: 720;
+  border-color: color-mix(in srgb, var(--value) 38%, var(--border));
+  font-weight: 700;
 }
 .tag.verdict-bust {
-  background: color-mix(in srgb, var(--reach) 14%, transparent);
+  background: transparent;
   color: var(--reach);
-  border-color: color-mix(in srgb, var(--reach) 40%, transparent);
-  font-weight: 720;
+  border-color: color-mix(in srgb, var(--reach) 38%, var(--border));
+  font-weight: 700;
 }
 
-/* Rows settle to a consistent height once the chips stop stacking. */
-tbody td { height: 52px; }
+/* One line per row, so the screen holds as many players as it can. The read
+   moved to the hover, the glossary moved to /legend, and both were paying for
+   themselves in rows the drafter could not see. */
+tbody td { height: 44px; }
 .tag-more {
   text-decoration: none;
   color: var(--muted);
@@ -2055,9 +2204,7 @@ tbody td { height: auto; padding-top: 9px; padding-bottom: 9px; }
 .read {
   border-radius: var(--r-xl);
   padding: var(--s5) var(--s6);
-  background:
-    radial-gradient(600px 260px at 92% -40%, color-mix(in srgb, var(--accent) 14%, transparent), transparent 70%),
-    var(--panel);
+  background: var(--panel);
   border: 1px solid var(--border);
   box-shadow: var(--shadow-2);
   margin-bottom: var(--s4);
