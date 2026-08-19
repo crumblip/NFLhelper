@@ -152,6 +152,56 @@ sources.push({
   note: 'The other 40% of the blend. Refresh before a draft, not on every session.',
 });
 
+/* ------------------------------------------------------------ news */
+
+/*
+ * News is the only source here whose staleness question is TWO questions.
+ *
+ * "How old is the newest item" is the usual one. But RotoWire publishes five
+ * items at a time and nothing backfills, so the second question — "how much
+ * history do we hold at all" — is the one that decides whether the tab is
+ * useful. A pull five minutes ago sitting on six hours of archive is fresh and
+ * nearly empty, and only the second number says so.
+ */
+const news = one<{ at: number; n: number; oldest: number; newest: number; srcs: number }>(
+  `SELECT MAX(fetched_at) AS at, COUNT(*) AS n, MIN(published_at) AS oldest,
+          MAX(published_at) AS newest, COUNT(DISTINCT source) AS srcs
+   FROM news_item`,
+);
+const newsSpan =
+  news && news.n > 0 ? (news.newest - news.oldest) / 86_400_000 : 0;
+sources.push({
+  name: 'news',
+  covers:
+    news && news.n
+      ? `${news.n} items from ${news.srcs} sources, ${newsSpan.toFixed(1)} days of history`
+      : 'nothing',
+  age: news?.at ? days(news.at) : null,
+  // Half a day: RotoWire's window is about two hours, so a day between pulls
+  // already means most of what it published was never seen.
+  stale: 0.5,
+  refresh: 'npm run ingest:news        (free, unmetered — run it often)',
+  note:
+    newsSpan < 3 && (news?.n ?? 0) > 0
+      ? `Only ${newsSpan.toFixed(1)} days of archive. This fills in by polling; nothing can backfill it.`
+      : 'The archive is only as deep as the polling has been.',
+});
+
+const inj = one<{ at: number; n: number; teams: number; serious: number }>(
+  `SELECT MAX(fetched_at) AS at, COUNT(*) AS n, COUNT(DISTINCT team) AS teams,
+          SUM(CASE WHEN status IN ('Out','Doubtful','Injured Reserve') THEN 1 ELSE 0 END) AS serious
+   FROM injury_report`,
+);
+sources.push({
+  name: 'injury report',
+  covers: inj && inj.n ? `${inj.n} players, ${inj.teams} teams, ${inj.serious} out or doubtful` : 'nothing',
+  age: inj?.at ? days(inj.at) : null,
+  // A snapshot of who is hurt goes off fast in season and slowly in August.
+  stale: 1,
+  refresh: 'npm run ingest:injuries    (free, one request)',
+  note: 'A snapshot — re-running replaces it, so a healed player disappears.',
+});
+
 /* ------------------------------------------------- last season's record */
 
 /*

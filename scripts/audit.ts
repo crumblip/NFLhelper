@@ -1,5 +1,6 @@
 import { sqlite } from '../lib/db/index';
 import { getWaiverBoard } from '../lib/waiver';
+import { getLeagueNews } from '../lib/news';
 import { USAGE_CONFIDENCE, GAP_DEAD_BAND } from '../lib/pipeline/blend';
 import { buildScouting } from '../lib/pipeline/scouting';
 import { buildRoleCertainty } from '../lib/pipeline/role';
@@ -2283,6 +2284,233 @@ console.log('\nCROSS-POSITION — does any board column just select a position?'
     'the OUTLOOK axis is the average of the two halves it claims to be',
     wrong.length === 0,
     `${wrong.length}: ${wrong.slice(0, 3).map((r) => r.name).join(', ')}`,
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*
+ * NEWS AND INJURIES
+ *
+ * These tables are optional — a board built before the news ingest ever ran is
+ * a valid board — so every check here is skipped rather than failed when the
+ * table is empty. A check that fails because a feature is not in use trains the
+ * reader to ignore the audit, which is the failure #95 was about wearing
+ * different clothes.
+ */
+console.log('\nNEWS — is the feed attributing and classifying honestly?');
+
+const newsCount = (
+  sqlite.prepare(`SELECT COUNT(*) n FROM news_item`).get() as { n: number }
+).n;
+
+if (newsCount === 0) {
+  console.log('  SKIP  no news stored — run `npm run ingest:news`');
+} else {
+  /*
+   * FAMILY #2 — a category matching almost everything is not classifying.
+   *
+   * The classifier is judgement, and this is the standard judgement is held to
+   * everywhere else here. Deliberately generous at 70%: the point is to catch a
+   * rule that has collapsed into "everything", not to police the shape of a
+   * distribution that legitimately shifts between August and December.
+   */
+  const catRows = sqlite
+    .prepare(`SELECT category, COUNT(*) n FROM news_item GROUP BY category`)
+    .all() as Array<{ category: string; n: number }>;
+  const worst = catRows
+    .filter((c) => c.category !== 'general')
+    .sort((a, b) => b.n - a.n)[0];
+  check(
+    'no single news category has swallowed the feed',
+    !worst || worst.n / newsCount <= 0.7,
+    `${worst?.category} is ${(((worst?.n ?? 0) / newsCount) * 100).toFixed(0)}% of ${newsCount} items — ` +
+      `a category that matches nearly everything carries no information`,
+  );
+
+  /*
+   * FAMILY #6 — the same standard as `every "measured" point quotes the number
+   * behind it`. A category is a claim about why an item matters, and the phrase
+   * that produced it is the evidence. Without it the chip is an assertion.
+   */
+  const noBasis = (
+    sqlite
+      .prepare(
+        `SELECT COUNT(*) n FROM news_item
+         WHERE category != 'general' AND (category_basis IS NULL OR category_basis = '')`,
+      )
+      .get() as { n: number }
+  ).n;
+  check(
+    'every categorised news item names the phrase that categorised it',
+    noBasis === 0,
+    `${noBasis} items carry a category with no basis — the chip would be an assertion`,
+  );
+
+  /*
+   * FAMILY #4 — the whole point of resolving through the depth chart.
+   *
+   * A mention's team must be the team the player is on NOW. This is the check
+   * for bugs #14, #29, #42 and #100 arriving through the news table: if the
+   * resolver ever falls back to `player_usage.team`, a traded player's news
+   * files under the roster he left.
+   */
+  const staleTeam = sqlite
+    .prepare(
+      `SELECT m.raw_name, m.team AS mentionTeam, dc.team AS chartTeam
+       FROM news_mention m
+       JOIN (SELECT player_id, team, MIN(pos_rank) r FROM depth_chart
+             WHERE season = ? GROUP BY player_id) dc ON dc.player_id = m.player_id
+       WHERE m.player_id IS NOT NULL AND m.team IS NOT NULL
+         AND m.team != dc.team`,
+    )
+    .all(SEASON) as Array<{ raw_name: string; mentionTeam: string; chartTeam: string }>;
+  check(
+    'news is filed under the team a player is on now, not the one he left',
+    staleTeam.length === 0,
+    `${staleTeam.length} mentions disagree with the depth chart: ` +
+      staleTeam.slice(0, 3).map((s) => `${s.raw_name} ${s.mentionTeam} v ${s.chartTeam}`).join(', '),
+  );
+
+  /*
+   * Every relevant item must be reachable, whether or not it names a team.
+   *
+   * This tests the READ PATH rather than the table, because the bug it exists
+   * for lived there. An inner join requiring a team dropped 30 of 85 items from
+   * the team pages *and* from the league view, since both were built from the
+   * same map — so the items existed, were correctly classified, and appeared
+   * nowhere at all.
+   *
+   * The first version of this check counted items with no mention row and
+   * warned on them, which is the wrong quantity twice over: a league-wide
+   * rankings piece legitimately belongs to no team, and after the fix it is
+   * reachable anyway. A check that fires on correct behaviour is worse than no
+   * check (#33 — an audit check can have the bug it is hunting).
+   */
+  const relevantCats = "'injury','role','scheme','transaction','analysis','performance'";
+  const relevantTotal = (
+    sqlite
+      .prepare(`SELECT COUNT(*) n FROM news_item WHERE category IN (${relevantCats})`)
+      .get() as { n: number }
+  ).n;
+  const reachable = getLeagueNews().length;
+  check(
+    'every fantasy-relevant news item is reachable in the feed',
+    reachable === relevantTotal,
+    `${reachable} reachable against ${relevantTotal} stored — ` +
+      `${relevantTotal - reachable} items are classified, attributed and visible on no page`,
+  );
+
+  /*
+   * Every mention is accounted for by name. `out_of_scope` is a success and
+   * `unresolved` is a miss, and conflating them is what made 33 correct
+   * exclusions look like failures. This fails only if genuine misses become a
+   * large share, which would mean the registry has drifted from the feed.
+   */
+  const methods = sqlite
+    .prepare(`SELECT method, COUNT(*) n FROM news_mention GROUP BY method`)
+    .all() as Array<{ method: string; n: number }>;
+  const totalM = methods.reduce((a, m) => a + m.n, 0);
+  const unresolved = methods.find((m) => m.method === 'unresolved')?.n ?? 0;
+  check(
+    'news names resolve to players, and an unresolvable name is rare',
+    totalM === 0 || unresolved / totalM < 0.15,
+    `${unresolved} of ${totalM} mentions resolve to nobody — over 15% means the registry has drifted from the feed`,
+    true,
+  );
+
+  /*
+   * The archive is append-only, and that is the one property it cannot lose.
+   * If a future change turns the ingest into DELETE-then-insert to match the
+   * house pattern, this is what notices: RotoWire publishes 5 items at a time,
+   * so a same-day span means the history was just erased.
+   */
+  const span = sqlite
+    .prepare(`SELECT MIN(published_at) a, MAX(published_at) b FROM news_item`)
+    .get() as { a: number; b: number };
+  const days = (span.b - span.a) / 86_400_000;
+  check(
+    'the news archive spans more than one pull',
+    newsCount < 60 || days > 0.5,
+    `${newsCount} items spanning only ${days.toFixed(2)} days — ` +
+      `if an ingest started deleting before it wrote, this is how it would look`,
+    true,
+  );
+}
+
+console.log('\nINJURIES — is the report current and honestly labelled?');
+
+const injCount = (
+  sqlite.prepare(`SELECT COUNT(*) n FROM injury_report`).get() as { n: number }
+).n;
+
+if (injCount === 0) {
+  console.log('  SKIP  no injury report stored — run `npm run ingest:injuries`');
+} else {
+  /*
+   * The opposite property from news: this one is a SNAPSHOT, so it must have
+   * been written in one go. Two fetch timestamps in the table means a
+   * DELETE-then-insert became an upsert somewhere and healed players are
+   * lingering — bugs #9, #64, #94 and #99, all the same shape.
+   */
+  const stamps = (
+    sqlite
+      .prepare(`SELECT COUNT(DISTINCT fetched_at) n FROM injury_report WHERE source = 'espn'`)
+      .get() as { n: number }
+  ).n;
+  check(
+    'the injury report is one snapshot, not a pile of them',
+    stamps <= 1,
+    `${stamps} distinct fetch times in one source — a healed player has no row to update, only a row that should stop existing`,
+  );
+
+  // Only the four modelled positions, or the page is quietly reporting on
+  // linemen it has no other opinion about.
+  const offPos = (
+    sqlite
+      .prepare(
+        `SELECT COUNT(*) n FROM injury_report WHERE position NOT IN ('QB','RB','WR','TE')`,
+      )
+      .get() as { n: number }
+  ).n;
+  check(
+    'the injury report holds only the four positions this project models',
+    offPos === 0,
+    `${offPos} rows at other positions`,
+  );
+
+  /*
+   * FAMILY #6 again, and the specific thing this page could most easily lie
+   * about. ESPN's "Active" means "carrying a knock and expected to play" and is
+   * the overwhelming majority of the report. The page states that in as many
+   * words; this fails if the composition ever shifts far enough that the
+   * sentence stops being true, at which point the copy needs rewriting rather
+   * than the data.
+   */
+  const active = (
+    sqlite
+      .prepare(`SELECT COUNT(*) n FROM injury_report WHERE status = 'Active'`)
+      .get() as { n: number }
+  ).n;
+  check(
+    'the page\'s claim that most of the injury report is "expected to play" is still true',
+    active / injCount > 0.5,
+    `only ${((active / injCount) * 100).toFixed(0)}% are Active — the notice on /injuries says most of the report is, and would now be wrong`,
+    true,
+  );
+
+  // A row with a status and nothing else is a status with no evidence.
+  const noText = (
+    sqlite
+      .prepare(
+        `SELECT COUNT(*) n FROM injury_report WHERE detail IS NULL AND analysis IS NULL`,
+      )
+      .get() as { n: number }
+  ).n;
+  check(
+    'an injury row carries the report behind it, not just a status word',
+    noText / injCount < 0.1,
+    `${noText} of ${injCount} rows have neither a beat report nor a written read`,
+    true,
   );
 }
 

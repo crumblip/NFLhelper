@@ -927,3 +927,162 @@ export const yahooOwnership = sqliteTable(
     index('yahoo_own_status_idx').on(t.leagueKey, t.status),
   ],
 );
+
+/*
+ * ---------------------------------------------------------------------------
+ * News and injuries
+ *
+ * These two tables look alike and are opposite shapes, which is the one thing
+ * to keep straight before editing either.
+ *
+ * `news_item` is an EVENT LOG and is append-only. `injury_report` is a
+ * SNAPSHOT and is DELETE-then-insert per source, like every other table here.
+ *
+ * That is a deliberate exception to this project's standing rule (#9, #64, #94,
+ * #99: an ingest must delete before it writes), and the reason is that the rule
+ * is about a different kind of fact. Those tables describe *current state* — a
+ * depth chart, an ADP, a roster — where a row that is no longer true has to
+ * stop existing. A news item is not a state, it is a thing that happened at a
+ * time. "Kamara left practice on 18 August" does not stop being true when the
+ * next item lands, and deleting it would destroy the archive.
+ *
+ * The archive matters more than usual here because of a measured constraint:
+ * **RotoWire's public feed carries only 5 items**, a rolling window of roughly
+ * the last two hours, and nothing backfills it. The database IS the history,
+ * and it only exists if the ingest accumulates. Anyone "fixing" this into a
+ * DELETE-then-insert to match the house pattern would quietly reduce the news
+ * tab to whatever happened since the last run.
+ *
+ * An injury report is the other kind: "Kamara is questionable" is a claim about
+ * now, and a player who has healed must have no row rather than a stale one.
+ * ---------------------------------------------------------------------------
+ */
+
+/**
+ * One published item, from any source. Append-only, deduplicated on id.
+ *
+ * `id` is `source:externalId`, so the same story arriving twice from one feed
+ * collapses while the same event reported by ESPN and RotoWire stays as two
+ * rows — they are different write-ups and the reader benefits from both.
+ *
+ * Team and player attribution live on `news_mention` rather than here, because
+ * one item routinely names several players across two teams: the camp reports
+ * ESPN publishes tag a dozen athletes each.
+ */
+export const newsItem = sqliteTable(
+  'news_item',
+  {
+    /** `source:externalId` — stable across re-ingests, which is the dedup. */
+    id: text('id').primaryKey(),
+    source: text('source').notNull(),
+    /** The publisher's own id for the item, before it was namespaced. */
+    externalId: text('external_id').notNull(),
+    headline: text('headline').notNull(),
+    /** The item's text. RotoWire ships the beat report; ESPN a summary. */
+    body: text('body'),
+    url: text('url'),
+    /** Publisher's timestamp, epoch ms. The sort key everywhere. */
+    publishedAt: integer('published_at').notNull(),
+    fetchedAt: integer('fetched_at').notNull(),
+
+    /*
+     * Why this item is fantasy-relevant.
+     *
+     * `category` is one of injury | role | scheme | transaction | performance |
+     * general, assigned by rule from the text. `general` is where everything
+     * the rules could not place lands, and it is EXCLUDED from the tab rather
+     * than shown with a low score — an item nothing matched is one we could not
+     * classify, which is not the same as one we classified as unimportant
+     * (family #6). The tab says how many were set aside.
+     */
+    category: text('category').notNull(),
+    /** The phrase that triggered the category, so a reader can check the call. */
+    categoryBasis: text('category_basis'),
+  },
+  (t) => [
+    index('news_published_idx').on(t.publishedAt),
+    index('news_category_idx').on(t.category, t.publishedAt),
+    index('news_source_idx').on(t.source),
+  ],
+);
+
+/**
+ * Which players and teams an item is about. Written with its item, never alone.
+ *
+ * `playerId` is the resolved gsis id and is null when a name did not resolve —
+ * the row is stored anyway, with `rawName`, because dropping it would shrink a
+ * team's news silently instead of showing an unattributed item. Same reasoning
+ * as `yahoo_ownership`: a missing row is itself a claim, so make the failure
+ * visible.
+ *
+ * `team` is the team the item is ABOUT, resolved through the current depth
+ * chart rather than through `player_usage`. Last season's roster is a stale
+ * fact (#14, #29, #42, #100), and news is where that is most obviously wrong,
+ * since a move is exactly the thing being reported.
+ */
+export const newsMention = sqliteTable(
+  'news_mention',
+  {
+    newsId: text('news_id').notNull(),
+    /** Resolved gsis id, or null when the name could not be matched. */
+    playerId: text('player_id'),
+    rawName: text('raw_name').notNull(),
+    /** Position from our own registry, not from the feed. */
+    position: text('position'),
+    /** Current team — the depth chart's answer, not last season's usage row. */
+    team: text('team'),
+    /** How the name was matched: 'espn_id' | 'name' | 'team' | 'unresolved'. */
+    method: text('method').notNull(),
+    /** True when the item is about the team rather than about one player. */
+    isTeamLevel: integer('is_team_level', { mode: 'boolean' }).notNull().default(false),
+  },
+  (t) => [
+    primaryKey({ columns: [t.newsId, t.rawName] }),
+    index('mention_player_idx').on(t.playerId),
+    index('mention_team_idx').on(t.team),
+    index('mention_pos_idx').on(t.team, t.position),
+  ],
+);
+
+/**
+ * The current injury report. A snapshot — DELETE-then-insert per source.
+ *
+ * ESPN's feed is the one worth having: besides a status it carries a beat
+ * report (`detail`) and a written fantasy read (`analysis`) that routinely
+ * names who stands to gain. That paragraph is why this is a tab rather than a
+ * column on the board.
+ *
+ * `status` is the publisher's word and is deliberately not normalised into a
+ * severity number. "Questionable" in August and "Questionable" on a Sunday
+ * morning are different claims, and collapsing them onto a 0-1 scale would be a
+ * judgement rendered as a measurement (family #6).
+ */
+export const injuryReport = sqliteTable(
+  'injury_report',
+  {
+    source: text('source').notNull(),
+    /** Resolved gsis id, null when unmatched — kept, same reasoning as mentions. */
+    playerId: text('player_id'),
+    rawName: text('raw_name').notNull(),
+    espnId: text('espn_id'),
+    position: text('position'),
+    /** Current team. The feed groups by team, so this is the feed's own answer. */
+    team: text('team'),
+    /** Publisher's word: Out, Questionable, Doubtful, IR, PUP, Active… */
+    status: text('status').notNull(),
+    /** Where the injury is, where the feed says. Often 'Undisclosed'. */
+    bodyPart: text('body_part'),
+    /** The beat report — a sentence, usually naming a reporter. */
+    detail: text('detail'),
+    /** The fantasy read: what it means and who gains. ESPN's longComment. */
+    analysis: text('analysis'),
+    /** When the report was filed, epoch ms — not when we fetched it. */
+    reportedAt: integer('reported_at'),
+    fetchedAt: integer('fetched_at').notNull(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.source, t.rawName] }),
+    index('injury_player_idx').on(t.playerId),
+    index('injury_team_idx').on(t.team, t.position),
+  ],
+);

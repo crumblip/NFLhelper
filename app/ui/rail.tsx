@@ -38,6 +38,26 @@ const ITEMS: Array<{ href: string; label: string; icon: ReactNode }> = [
     ),
   },
   {
+    href: '/news',
+    label: 'News',
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M17 4H5.5A2.5 2.5 0 0 0 3 6.5v11A2.5 2.5 0 0 0 5.5 20h13a2.5 2.5 0 0 0 2.5-2.5V8" />
+        <path d="M17 4v4h4" />
+        <path d="M7 10h7M7 13.5h7M7 17h4" />
+      </svg>
+    ),
+  },
+  {
+    href: '/injuries',
+    label: 'Injuries',
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M9 3h6v6h6v6h-6v6H9v-6H3V9h6z" />
+      </svg>
+    ),
+  },
+  {
     href: '/league',
     label: 'League',
     icon: (

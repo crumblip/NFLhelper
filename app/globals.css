@@ -2304,3 +2304,185 @@ tbody td { height: auto; padding-top: 9px; padding-bottom: 9px; }
   overflow-x: auto;
 }
 .empty { font-size: 12px; font-style: italic; }
+
+/* ============================================================================
+   News and injuries
+
+   Colour ranks; it does not decorate (#104). On a news row the only saturated
+   marks are the position badge on a named player — an index the eye sorts by —
+   and the injury severity dot, whose content is a caution. Category, source and
+   time are ink on panel: none of them is a verdict, and sixteen coloured chips
+   in a list would rank nothing.
+   ========================================================================= */
+
+/* ---- team picker: a dense grid, because there are 32 of them ---- */
+.news-teams {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+  gap: var(--s2);
+  margin-bottom: var(--s5);
+}
+.news-team {
+  display: flex; align-items: center; gap: 6px;
+  padding: 7px var(--s2);
+  border: 1px solid var(--border); border-radius: var(--r-sm);
+  background: var(--panel); color: var(--text-2);
+  font-size: 12px; font-weight: 600; text-decoration: none;
+  transition: border-color 120ms, background 120ms, color 120ms;
+}
+.news-team:hover { border-color: var(--border-strong); color: var(--text); }
+.news-team[data-on='true'] {
+  border-color: var(--accent); background: var(--accent-bg); color: var(--text);
+}
+.news-team .team-dot {
+  width: 7px; height: 7px; border-radius: 50%; flex: none;
+  background: var(--team-bright, var(--muted));
+}
+.news-team-abbr { letter-spacing: 0.02em; }
+.news-team-n {
+  margin-left: auto; color: var(--faint);
+  font-size: 11px; font-variant-numeric: tabular-nums; font-weight: 600;
+}
+.news-team[data-on='true'] .news-team-n { color: var(--text-2); }
+
+/* ---- filters ---- */
+.news-filters {
+  display: flex; flex-wrap: wrap; align-items: center;
+  gap: var(--s3); margin-bottom: var(--s4);
+}
+.news-cats { display: flex; flex-wrap: wrap; gap: 6px; }
+.news-cats .chip b { font-weight: 700; color: var(--faint); margin-left: 3px; }
+.news-cats .chip[data-on='true'] b { color: var(--text-2); }
+.news-cats .chip:disabled,
+.seg button:disabled { opacity: 0.35; cursor: not-allowed; }
+.seg button b { font-weight: 700; color: var(--faint); }
+
+/* ---- the list ---- */
+.news-list { display: flex; flex-direction: column; gap: var(--s2); }
+
+.news-item {
+  padding: var(--s4);
+  border: 1px solid var(--border); border-radius: var(--r-md);
+  background: var(--panel);
+  /* A hairline in the gutter carries the category. It is 2px of ink rather
+     than a filled chip, for the same reason the board's tone mark is (#106):
+     the reader is scanning for "what kind of thing is this", and the words
+     beside it carry everything past that. */
+  border-left: 2px solid var(--border-strong);
+  transition: border-color 120ms, background 120ms;
+}
+.news-item:hover { background: var(--panel-hover); }
+.news-item[data-cat='injury'] { border-left-color: var(--reach); }
+.news-item[data-cat='role'] { border-left-color: var(--accent); }
+.news-item[data-cat='transaction'] { border-left-color: var(--warn); }
+.news-item[data-cat='scheme'] { border-left-color: var(--value); }
+
+.news-item-head {
+  display: flex; align-items: center; gap: var(--s2);
+  margin-bottom: 6px;
+  font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase;
+}
+.news-cat { color: var(--text-2); font-weight: 700; cursor: help; }
+.news-src { color: var(--faint); font-weight: 600; }
+.news-src::before { content: '·'; margin-right: var(--s2); color: var(--border-strong); }
+.news-time { margin-left: auto; color: var(--faint); font-weight: 600; text-transform: none; }
+
+.news-headline { margin: 0 0 5px; font-size: 15px; line-height: 1.35; font-weight: 650; }
+.news-headline a { color: var(--text); text-decoration: none; }
+.news-headline a:hover { text-decoration: underline; text-underline-offset: 2px; }
+
+.news-body {
+  margin: 0 0 var(--s3); font-size: 13px; line-height: 1.5; color: var(--text-2);
+  /* Feed bodies run to a paragraph; three lines is enough to decide whether to
+     open it and short enough that the list stays scannable. */
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.news-players { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.news-player {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 8px 3px 3px;
+  border: 1px solid var(--border); border-radius: var(--r-full);
+  background: var(--panel-2); color: var(--text-2);
+  font-size: 12px; font-weight: 600; text-decoration: none;
+}
+.news-player:hover { border-color: var(--border-strong); color: var(--text); }
+.news-player-pos {
+  display: grid; place-items: center;
+  width: 20px; height: 17px; border-radius: var(--r-full);
+  background: var(--pos-color); color: #fff;
+  font-size: 9.5px; font-weight: 800; font-style: normal; letter-spacing: 0.02em;
+}
+.news-soft { font-style: normal; color: var(--faint); cursor: help; font-weight: 700; }
+.news-more { font-size: 12px; color: var(--faint); font-weight: 600; }
+.news-teamlevel { font-size: 12px; color: var(--faint); font-style: italic; }
+
+/* ============================================================================
+   Injury report
+   ========================================================================= */
+
+.inj-team { margin-bottom: var(--s5); }
+.inj-team-head {
+  display: flex; align-items: center; gap: var(--s2);
+  padding-bottom: 6px; margin-bottom: var(--s2);
+  border-bottom: 1px solid var(--border);
+}
+.inj-team-head .team-dot {
+  width: 9px; height: 9px; border-radius: 50%;
+  background: var(--team-bright, var(--muted));
+}
+.inj-team-head h3 { margin: 0; font-size: 14px; font-weight: 700; }
+.inj-team-head .inj-count { margin-left: auto; font-size: 12px; color: var(--faint); }
+
+.inj-row {
+  display: grid;
+  grid-template-columns: 34px minmax(120px, 1.1fr) 96px 88px 3fr;
+  align-items: start; gap: var(--s3);
+  padding: var(--s3) var(--s2);
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+.inj-row:last-child { border-bottom: 0; }
+.inj-row:hover { background: var(--panel-hover); }
+
+.inj-pos {
+  display: grid; place-items: center;
+  width: 26px; height: 19px; border-radius: var(--r-full);
+  background: var(--pos-color); color: #fff;
+  font-size: 10px; font-weight: 800;
+}
+.inj-name { font-weight: 650; color: var(--text); text-decoration: none; }
+.inj-name:hover { text-decoration: underline; text-underline-offset: 2px; }
+.inj-adp { display: block; font-size: 11px; color: var(--faint); font-weight: 600; }
+
+/* Severity is the one thing on this page worth a saturated mark: it is the
+   rank the whole table is read on. Everything else is ink. */
+.inj-status {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 11.5px; font-weight: 700; letter-spacing: 0.02em;
+}
+.inj-status i {
+  width: 7px; height: 7px; border-radius: 50%; flex: none;
+  background: var(--muted);
+}
+.inj-status[data-sev='0'] i, .inj-status[data-sev='1'] i { background: var(--reach); }
+.inj-status[data-sev='2'] i, .inj-status[data-sev='3'] i { background: var(--warn); }
+.inj-status[data-sev='4'] i { background: var(--warn); opacity: 0.7; }
+.inj-status[data-sev='5'] i { background: var(--muted); opacity: 0.5; }
+.inj-status[data-sev='0'], .inj-status[data-sev='1'] { color: var(--reach); }
+
+.inj-body { color: var(--text-2); font-size: 12.5px; }
+.inj-detail { margin: 0; line-height: 1.5; }
+.inj-analysis {
+  margin: 5px 0 0; padding-left: var(--s3);
+  border-left: 2px solid var(--border);
+  color: var(--muted); line-height: 1.5; font-size: 12px;
+}
+.inj-when { font-size: 11px; color: var(--faint); font-weight: 600; }
+
+@media (max-width: 900px) {
+  .inj-row { grid-template-columns: 30px 1fr; }
+  .inj-row > :nth-child(3), .inj-row > :nth-child(4) { grid-column: 2; }
+  .inj-body { grid-column: 1 / -1; }
+}

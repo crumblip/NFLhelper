@@ -76,6 +76,14 @@ npm run refresh              # props -> baseline -> values -> usage grade -> ble
 npm run dev                  # localhost:3000
 ```
 
+News and injuries (free and unmetered — safe to run on a timer, and the news
+archive only exists if you do):
+
+```bash
+npm run migrate:news         # once, creates the tables
+npm run news                 # ingest:news + ingest:injuries
+```
+
 Connecting a Yahoo league (optional, one-time consent then re-run as needed):
 
 ```bash
@@ -83,7 +91,7 @@ npm run yahoo:auth           # browser consent, paste the code back, lists your 
 npm run ingest:yahoo         # teams, rosters, waivers -> real availability on the wire
 ```
 
-**`npm run audit` runs 90 invariant checks and is wired into `refresh`**, exiting
+**`npm run audit` runs 113 invariant checks and is wired into `refresh`**, exiting
 non-zero on failure. It is negative-tested: injected bugs are caught and rolled
 back. **When a new bug turns up, add a check for its family rather than only
 fixing the instance.**
@@ -2150,7 +2158,208 @@ network request. A definite box (`width/height: 100%` + `object-fit: cover`)
 and no lazy attribute. Any future image sized from its own intrinsic dimensions
 can hit the same thing.
 
+## The news and injury tabs
+
+Two new surfaces, `/news` and `/injuries`, plus the ingests behind them. Read
+the sourcing section before changing anything: what is reachable for free
+decided the whole design, and two of the constraints are not obvious.
+
+### What can actually be pulled, and what cannot
+
+Every source below is **free, keyless and unmetered** — none of them costs API
+credits the way the prop feed does, so `npm run news` is safe to run on a timer.
+
+| source | what it gives | volume | attribution |
+|---|---|---|---|
+| **ESPN news** `/nfl/news` | league articles | **50, hard cap** (verified at `limit=100` and `200`) | tags **athlete ids** and team ids in `categories` |
+| **ESPN injuries** `/nfl/injuries` | the whole league's report | ~800 rows, **459 at QB/RB/WR/TE** | grouped by team; **no `athlete.id` field** |
+| **RotoWire RSS** | player-level fantasy news | **5 items**, rolling ~2 hours | headline is `Player Name: what happened` |
+| **Yahoo Sports RSS** | general NFL news | 50 items | **nothing** — no ids, no team tags |
+
+**X/Twitter and Instagram are not reachable and no amount of code fixes that.**
+X's API has no free read tier — reading tweets starts at a paid plan — and the
+open mirrors are gone. Instagram's Graph API only exposes accounts you own, so
+reels from a fantasy analyst are not fetchable by any supported route. The
+adapter interface (`lib/providers/news/types.ts`) is deliberately shaped so a
+credentialed source drops in as one more file returning `RawNewsItem[]`, but
+nothing here pretends to have that data today.
+
+**The loss is smaller than it looks, and this is the part worth knowing.**
+RotoWire's items *are* the beat-reporter posts, quoted and attributed:
+"Kamara (knee) avoided a major injury but will be out for a few weeks, *Nick
+Underhill of NewOrleans.Football reports*". The reporting flows through the
+aggregator even though the posts themselves do not. What is genuinely missing is
+the analyst commentary layer — the advanced-stats video content — and nothing
+free replaces it.
+
+**CBS and NBC/Rotoworld RSS both 404.** Tested, dead, do not re-add.
+
+### The ESPN id join is a hard join, and the id is hidden
+
+Player attribution on both ESPN endpoints resolves through `players.espn_id`
+rather than by matching names. Measured on a live pull:
+
+| feed | by id | by name | missed |
+|---|---|---|---|
+| injuries (skill positions) | **453 / 459 (98.7%)** | 3 | 3 |
+| news athlete tags | 148 / 182 | — | 34, **every one a lineman or defender** |
+
+The three injury misses are two undrafted camp bodies and Travis Hunter, whom
+nflverse does not list at receiver. The 34 news misses are correct exclusions,
+not failures — see the next section.
+
+**The trap: `/injuries` carries no `athlete.id`.** The id exists only inside the
+player's own web link (`…/nfl/player/_/id/4870808/jeremiyah-love`), which is
+what `espnIdFromLinks()` digs out. Without it the feed falls back to name
+matching, and ESPN's nicknames bite immediately — it files Marquise Brown as
+**"Hollywood Brown"**, which nflverse has never heard of.
+
+### `news_item` is APPEND-ONLY, and that is deliberate
+
+**This is the one write path in the project that must not DELETE before it
+writes**, against the standing rule from #9, #64, #94 and #99. The distinction:
+
+- those tables describe **current state** — a depth chart, an ADP, a roster —
+  where a row that is no longer true has to stop existing;
+- a news item is **a thing that happened at a time**. "Kamara left practice on
+  18 August" does not stop being true when the next item lands.
+
+It matters because of the measured constraint above: **RotoWire ships 5 items
+per pull and nothing backfills it.** The database IS the history. Converting
+this to DELETE-then-insert to match the house pattern would silently reduce the
+news tab to whatever happened since the last run, which on a Sunday morning is
+nothing. An audit check (`the news archive spans more than one pull`) notices if
+that ever happens.
+
+`injury_report` is the opposite shape and DOES delete per source: "he is
+questionable" is a claim about now, and a healed player must have no row rather
+than a stale one. Its own check (`the injury report is one snapshot, not a pile
+of them`) catches an upsert creeping in.
+
+### Relevance is filed by rule and never scored
+
+There is no relevance number, on purpose (family #6). An item takes the **first
+category whose wording it matches**, the phrase that decided it is stored in
+`category_basis` and shown on the chip's hover, and anything no rule matched is
+filed `general` and **left out of the tab rather than given a low score**. The
+page states how many were set aside.
+
+Categories, ordered by how much they change a decision — a real event always
+beats commentary about it, so a signing reported in a fantasy column files as
+`transaction`, not `analysis`:
+
+`injury · transaction · role · scheme · analysis · performance · general`
+
+**Measured, and it had to be** (`npm run check:news`, which prints firing rates
+and the phrases carrying each category). The first version filed **66% as
+`general`** — it was discarding two thirds of the feed, including "Fantasy
+football buzz: Colts sign Keenan Allen" and "What is the state of the Browns' QB
+competition?". Two faults:
+
+1. **Missing an entire category.** Explicitly fantasy-framed writing — rankings,
+   draft guides, sleepers — had nowhere to go. Hence `analysis`. Matching on the
+   bare word "fantasy" is broad and here that is *correct*: this is a fantasy
+   tool, so an item saying "fantasy" is on-topic by construction, and the
+   looseness is bounded by four fact categories having already had their turn.
+2. **Literal phrases fail on the intervening word.** "returns to practice" is a
+   good rule that misses "returns to **joint** practice" and "returns to
+   **Tuesday's** practice" — the same event both times. Answering that by adding
+   every variant as its own literal is how a keyword list rots, so where the
+   signal is a *relationship between two words* it is written as a pattern with a
+   **bounded** gap. The matched text is stored as the basis, so a pattern is no
+   less auditable than a phrase.
+
+After both: **`general` fell 66% → 19%**, and what remains is genuinely not
+fantasy news — league expansion, an obituary, a joint-practice brawl, a
+defensive-MVP poll. Firing rates now run injury 23% · role 26% · transaction 18%
+· analysis 11% · scheme 2% · performance 1%.
+
+**`scheme` and `performance` barely fire, and in August that is correct** — no
+games have been played and coordinators are not giving interviews. Do not loosen
+them to fill the chips; the same discipline as not loosening the gem list.
+
+### `out_of_scope` is not `unresolved`
+
+The first run reported **33 unresolved names** — Abdul Carter, Devon Witherspoon,
+Vita Vea, Minkah Fitzpatrick. Every one is a real player at a position this
+project models on purpose does not cover. Reporting a correct exclusion as a
+failure hides the real misses in a list nobody reads, so a name that resolves to
+a non-skill player is now recorded as `out_of_scope`. **Genuine misses: zero.**
+
+Mention `method` is one of `espn_id` · `name` · `team` · `out_of_scope` ·
+`unresolved`, and the page marks a `name` match with a `~` — "ESPN told us this
+is him" and "we found that string in a paragraph" are different claims.
+
+### Team attribution goes through the depth chart, and falls back to the prose
+
+Team comes from the **current** depth chart via the same COALESCE ladder as #100
+(position-matched listing → any listing → `latest_team` → usage row), never from
+`player_usage.team`. News is where a stale team is most obviously wrong, because
+a move is often the thing being reported. An audit check enforces it.
+
+Where a source tags no team at all — Yahoo tags nothing — the team is read out of
+the prose by nickname, derived from `lib/teams.ts` so the two cannot drift.
+Nicknames only: "New York" and "Los Angeles" are each two teams. This runs
+**only when the source tagged none**, or an ESPN article would file itself in
+every room it mentions in passing. It took team mentions from 12 to 61 and cut
+unattributable items from 30 to 8.
+
+### Bugs found while building this
+
+- **30 of 85 relevant items were invisible on every page.** The read layer built
+  the team map with an inner join on `team IS NOT NULL`, and the league view was
+  derived from that same map — so an item belonging to no team (a rankings
+  piece) appeared in neither. Items are now loaded independently of attribution
+  and mentions are attached afterwards, so **a failure to attribute costs a
+  filter, never the item.** Audit check: `every fantasy-relevant news item is
+  reachable in the feed`.
+- **A client component cannot import anything that reaches the database.**
+  `news-feed.tsx` imported its category labels from `lib/news.ts`, which imports
+  `lib/db/index`, which is `better-sqlite3` — and the route died with
+  `Can't resolve 'fs'`. This is the concrete form of the warning already in this
+  file about why Chakra was rejected twice. **`lib/news-shared.ts` imports
+  nothing and holds every runtime value the UI needs**; types cross the boundary
+  freely because `import type` is erased. Any future client component here has
+  to observe the same split.
+- **An audit check written for this had the bug it was hunting** (#33, again).
+  It counted items with no mention row and warned on them — but a league-wide
+  rankings piece legitimately has none, and after the fix above it is reachable
+  anyway, so the check fired on correct behaviour. It now tests the read path
+  directly by calling `getLeagueNews()`.
+
+### Ten audit checks, all negative-tested
+
+Six on news, four on injuries, inserted **above** the summary block per #95.
+They skip rather than fail when the tables are empty, because a board built
+before the news ingest ever ran is a valid board — a check that fails because a
+feature is unused trains the reader to ignore the audit.
+
+Negative-tested by injecting a stale mention team, a missing category basis and
+a split snapshot timestamp: all three fired, then rolled back.
+
+### Run order
+
+```bash
+npm run migrate:news       # once — creates the three tables
+npm run news               # ingest:news + ingest:injuries, both free
+npm run check:news         # firing rates, attribution, team coverage — a report
+```
+
+`npm run check:freshness` now reports both. News carries **two** ages, and the
+second is the one that matters: how old the newest item is, and **how much
+history is held at all**. A pull five minutes ago sitting on six hours of
+archive is fresh and nearly empty, and only the second number says so.
+
+Deliberately **not** wired into `npm run refresh`: that rebuilds the board from
+the market and usage, and news touches neither. Nothing on the board or the wire
+reads these tables.
+
 ## Where things stand right now (end of the last session)
+- **`/news` and `/injuries` are live.** News holds 106 items from 3 free
+  sources, 85 of them fantasy-relevant across 31 teams, filed by rule with the
+  deciding phrase kept. Injuries holds 459 skill-position players across all 32
+  teams, 458 with ESPN's written fantasy read. Both are in the rail. Neither
+  touches the board — nothing on `/` or `/waiver` reads them.
 - Board: **185 rows** after an ADP re-pull (was 179).
 - Depth-chart rooms are cut to the men who can hold or take a role — **QB 3-4 ·
   RB 4-7 · WR 6-8 · TE 2-4**, down from 10-15 (#102), and every direction arrow
@@ -2161,7 +2370,7 @@ can hit the same thing.
   wire, 194 clearing the evidence floor. **All 511 now get a range** — the 41
   with no close analogue get it with the midpoint marked rough (#97).
 - Every board row carries a **case**: one verdict, the argument for and against, each point stamped `measured` / `weak` / `fact` / `unknown`.
-- `npm run audit` runs **103 checks**: 102 pass, 1 warning — and the exit code now
+- `npm run audit` runs **113 checks** (103 board + 10 news/injury): 112 pass, 1 warning — and the exit code now
   actually covers all of them (#95). The warning is market coverage: the ADP
   re-pull added six board players the 10-day-old prop feed has never priced, so
   only 39% of WR/RB carry a full market read. It clears when the props are
