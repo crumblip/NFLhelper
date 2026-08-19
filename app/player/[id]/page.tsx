@@ -252,6 +252,14 @@ function SectionHead({ title, hint }: { title: string; hint?: string }) {
  * way to know that. The bar also used to scale itself so the floor pinned to the
  * left edge and the ceiling to the right, which made every range — 40 points
  * wide or 300 — look exactly the same width.
+ *
+ * `midpointUnreliable` marks the median as the weak part of the reading rather
+ * than withholding the whole bar. Measured twice now, on two different measures
+ * of neighbourhood quality, the answer is the same both times: a loose
+ * neighbourhood roughly doubles the error on the midpoint and leaves the
+ * floor-to-ceiling spread doing its job. Drawing the median faint says that
+ * where it happens, which is what "read the spread, not the midpoint" means when
+ * it is a picture rather than a sentence.
  */
 function OutlookRange({
   floor,
@@ -262,6 +270,7 @@ function OutlookRange({
   replacement,
   digits = 0,
   unit,
+  midpointUnreliable = false,
 }: {
   floor: number;
   median: number;
@@ -271,6 +280,7 @@ function OutlookRange({
   replacement: number | null;
   digits?: number;
   unit: string;
+  midpointUnreliable?: boolean;
 }) {
   const marks = [floor, median, ceiling, own, replacement].filter(
     (v): v is number => v !== null && Number.isFinite(v),
@@ -300,10 +310,13 @@ function OutlookRange({
           <i />
           <small>floor</small>
         </span>
-        <span className="outlook-marker mid" style={{ left: at(median) }}>
+        <span
+          className={`outlook-marker mid${midpointUnreliable ? ' unreliable' : ''}`}
+          style={{ left: at(median) }}
+        >
           <span>{fmt(median)}</span>
           <i />
-          <small>median</small>
+          <small>{midpointUnreliable ? 'median · rough' : 'median'}</small>
         </span>
         <span className="outlook-marker" style={{ left: at(ceiling) }}>
           <span>{fmt(ceiling)}</span>
@@ -406,7 +419,10 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
    */
   const compSentence = outlook
     ? outlook.sparse
-      ? 'No historical profile close enough to compare him to.'
+      ? // No close analogue quotes the SPREAD and never the midpoint. The card
+        // is one sentence with no room for a caveat, and the midpoint is the
+        // half of the reading the backtest says not to trust.
+        `No close historical profile — the least-unlike roles spanned ${outlook.floor.toFixed(0)}–${outlook.ceiling.toFixed(0)} half-PPR points.`
       : `${outlook.n} similar seasons, ${outlook.fromSeason}–${outlook.toSeason}, went on to a median of ` +
         `${outlook.median.toFixed(0)} half-PPR points — ${outlook.medianPpg.toFixed(1)} a game.`
     : null;
@@ -823,11 +839,17 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
                 <div className="stat-value">
                   {outlook && !outlook.sparse ? outlook.medianPpg.toFixed(1) : '—'}
                 </div>
+                {/*
+                  The tile IS the midpoint, so with no close analogue it stays an
+                  em dash — that is the half of the reading the backtest breaks.
+                  The note points at the range below rather than implying there
+                  is nothing to read, which is what it used to do.
+                */}
                 <div className="stat-note">
                   {outlook && !outlook.sparse
                     ? `Half-PPR per game, median of ${outlook.n} similar roles. Range ${outlook.floorPpg.toFixed(1)}–${outlook.ceilingPpg.toFixed(1)}.`
                     : outlook?.sparse
-                      ? 'No close historical analogue.'
+                      ? `No close analogue, so no midpoint. The spread below still reads: ${outlook.floorPpg.toFixed(1)}–${outlook.ceilingPpg.toFixed(1)} a game.`
                       : 'Too few games to profile him.'}
                 </div>
               </div>
@@ -922,10 +944,11 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
                     {!m.hasRole ? (
                       <b className="faint" style={{ fontWeight: 400 }}>no real role</b>
                     ) : (
-                      <b
-                        className={`room-trend ${m.trend}`}
-                        title={m.trendReason}
-                      >
+                      /* No `title` here: the reason is already rendered as
+                         visible text in `room-why` one column over, so the
+                         attribute was a second copy of the same sentence behind
+                         a one-second delay that never appears on touch. */
+                      <b className={`room-trend ${m.trend}`}>
                         {m.trend === 'rising' ? '↑ gaining' : m.trend === 'slipping' ? '↓ losing ground' : '→ holding'}
                       </b>
                     )}
@@ -935,15 +958,36 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
               ))}
             </div>
             <p className="legend" style={{ marginTop: 'var(--s3)' }}>
-              <strong>↓ losing ground</strong> means he misses time, is past the age curve for his
-              position, or somebody listed below him out-produced him last season.{' '}
-              <strong>↑ gaining</strong> means the reverse — he out-produced the men above him, or
-              the player directly ahead is the fragile one.{' '}
-              <strong>→ holding</strong> is most of a depth chart and should read that way.{' '}
-              <strong>No real role</strong> is under 8% of the position&rsquo;s work: no job to lose,
-              so nothing is claimed. Shares are each man&rsquo;s {SEASON - 1} usage on whichever team
-              he was with, so a room can total over 100% when someone arrived from elsewhere — those
-              carry the team they were earned at.
+              Every arrow names the fact behind it, in the row.{' '}
+              <strong>↓ losing ground</strong> means either that somebody listed below him took more
+              of <em>this team&rsquo;s</em> work last season, or — for the man listed first, who is
+              the only one with a job to lose — that his own games or age say so, with the figure
+              given. <strong>↑ gaining</strong> is the mirror: he took more of the work than
+              somebody listed above him, or the man <em>directly</em> ahead is the fragile one.{' '}
+              <strong>→ holding</strong> is most of a depth chart and should read that way.
+            </p>
+            <p className="legend">
+              Two things are deliberately <em>not</em> an arrow.{' '}
+              <strong>A player who arrived from another team</strong> is marked as such and holds:
+              his share was earned on a different roster, so it is not evidence about this room, and
+              guessing a direction from it is how a receiver read &ldquo;losing ground&rdquo; to a
+              team-mate who had never played beside him.{' '}
+              <strong>No real role</strong> means under 8% of the position&rsquo;s work, or a share
+              measured over fewer than four games — a share is computed over the weeks a man
+              appeared, so one relief appearance can read as a large share of nothing.
+            </p>
+            <p className="legend">
+              {/*
+                Say what has been cut, or the reader assumes the chart is wrong.
+                The alternative was a fifteen-man camp roster, where a seventh
+                back costs the same attention as the starter.
+              */}
+              The room is cut to the men who can hold or take a role — measured at four deep for
+              quarterbacks, five for backs, six for receivers and three for tight ends, which is
+              where a listing stops carrying information. Anyone who held a real share last season,
+              or who is being drafted, is kept however deep the camp chart lists him. Shares are each
+              man&rsquo;s {SEASON - 1} usage on whichever team he was with, so a room can total over
+              100% when someone arrived from elsewhere — those carry the team they were earned at.
             </p>
             {role.reasons.length > 0 && (
               <p className="caveat warn">{role.reasons.join(' · ')}</p>
@@ -1123,7 +1167,26 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
             </div>
 
             {/* ------------- the offence around him ------------- */}
-            <h3 className="outlook-h">The offence he plays in</h3>
+            <h3 className="outlook-h">
+              The offence he plays in
+              {scouting.environment.team ? ` — ${scouting.environment.team}` : ''}
+            </h3>
+            {/*
+              For anyone who moved, this whole block is the RIGHT team measured
+              in a season he was not on it. Both halves of that have to be said:
+              naming only the team implies he was part of these numbers, and
+              naming only the season leaves the reader assuming it is his old
+              one. `team_context` cannot reach further forward — it is built
+              from play-by-play, and 2026 has not been played.
+            */}
+            {scouting.movedFrom && (
+              <p className="legend">
+                He arrives from <strong>{scouting.movedFrom}</strong>, so every number in this
+                block is <strong>{scouting.environment.team}</strong> in {scouting.season} —
+                the offence he is joining, measured the season before he joined it. His own
+                production above was earned at {scouting.movedFrom}.
+              </p>
+            )}
             <div className="grid c4">
               <div className="stat">
                 <div className="stat-label">Scoring offence</div>
@@ -1191,13 +1254,23 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
             <h3 className="outlook-h">The play caller and the line</h3>
             <div className="grid c4">
               <div className="stat">
-                <div className="stat-label">Head coach</div>
+                <div className="stat-label">
+                  Head coach{scouting.environment.team ? `, ${scouting.environment.team}` : ''}
+                </div>
                 <div className="stat-value coach">{scouting.environment.headCoach ?? '—'}</div>
                 <div className="stat-note">
-                  From play-by-play, so it is the head coach rather than the coordinator — nflverse
-                  publishes no coordinator table. A coaching change costs a running back about 12
-                  points: backs who stayed put lost 24.5 the next season against 12.5 for backs who
-                  kept their coach.
+                  {/*
+                    The tile is labelled with the team because the name alone is
+                    unfalsifiable to a reader who does not already know where the
+                    player is — which is exactly the reader this tile is for.
+                    Jahan Dotson read "Nick Sirianni" for a season he will spend
+                    in Atlanta, and nothing on the tile made that checkable.
+                  */}
+                  Who called the plays there in {scouting.season}, from play-by-play — the head
+                  coach rather than the coordinator, since nflverse publishes no coordinator table.
+                  {scouting.movedFrom
+                    ? ' He was not in this building last season, and a coaching change costs a running back about 12 points, so treat a new room as a real unknown.'
+                    : ' A coaching change costs a running back about 12 points: backs who stayed put lost 24.5 the next season against 12.5 for backs who kept their coach.'}
                 </div>
               </div>
               <div className="stat">
@@ -1353,35 +1426,92 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
       )}
 
       {/* ---------------- outlook ---------------- */}
-      {outlookDetail && !outlook!.sparse && (
+      {/*
+        ONE panel for every player, because the difference between a common
+        profile and an unprecedented one is a caption, not a missing chart.
+
+        This used to be two branches: a player whose nearest historical season
+        sat past his position's no-analogue band got a comparison list and no
+        range, everyone else got both. That put Puka Nacua, Jaxon Smith-Njigba,
+        Christian McCaffrey and Rashee Rice — four of the twelve most expensive
+        players in the draft — on a visibly different panel from the rest, so a
+        reader starting at the top of the board met the exception before the
+        rule and read it as a missing feature.
+
+        The suppression was also against this project's own calibration.
+        `calibrate:comparables` now replicates the shipped gate and buckets every
+        backtested season either side of it: a remote neighbourhood breaks the
+        MIDPOINT and not the RANGE. Mean error on the median roughly doubles at
+        running back (43 to 80) while interval coverage holds or runs wide — 0.89
+        at receiver against a 0.60 target, on the largest suppressed group and
+        the position 11 of 13 picks come from. Same shape the closeShare buckets
+        found, and the same conclusion the file header already drew: report
+        support, read the spread, do not suppress the range.
+
+        The RATES are a different claim on the same neighbourhood and were not
+        tested here, so they stay withheld — as do the ranked percentiles (#93).
+      */}
+      {outlookDetail && (
         <>
           <SectionHead
             title="What happened to players like him"
-            hint={`${outlook!.n} closest seasons, ${outlook!.fromSeason}–${outlook!.toSeason}`}
+            hint={`${outlook!.n} closest seasons, ${outlook!.fromSeason}–${outlook!.toSeason} · outcomes to ${outlook!.outcomeToSeason}`}
           />
           <section className="card">
-            <p className="body">
-              His {outlookDetail.profileSeason} role, scoring opportunity, production and age were
-              matched against every {header.position} season from {outlook!.fromSeason} to{' '}
-              {outlook!.toSeason}, and the {outlook!.n} closest were followed into the{' '}
-              <em>next</em> year.{' '}
-              {/*
+            {outlook!.sparse ? (
+              <p className="body">
+                <strong>Nothing in the record looks much like him.</strong> Across every{' '}
+                {header.position} season from {outlook!.fromSeason} to {outlook!.toSeason}, his
+                single closest match sits further away than a typical {header.position}&rsquo;s{' '}
+                <em>middling</em> one — {outlook!.nearestDistance.toFixed(2)} against{' '}
+                {outlook!.bands.noAnalogue.toFixed(2)} on the same scale. That is a finding about
+                him rather than a gap in the data, and it is why no hit or bust rate is quoted for
+                him: those are claims about a group he does not belong to. The range below is
+                still drawn, with the caveat that goes under it.
+              </p>
+            ) : (
+              <p className="body">
+                His {outlookDetail.profileSeason} role, scoring opportunity, production and age were
+                matched against every {header.position} season from {outlook!.fromSeason} to{' '}
+                {outlook!.toSeason}, and the {outlook!.n} closest were followed into the{' '}
+                <em>next</em> year.{' '}
+                {/*
                 One framing, once. The bust bar is now replacement itself, so
                 "cleared replacement" and "busted" are the same measurement with
                 the sign flipped — and this page was printing both, a few inches
                 apart, as though they were two facts. The board column is called
                 BUST, so bust is the wording everywhere.
-              */}
-              <strong>{pct0(outlook!.bustRate)}</strong> of them were worth less than a{' '}
-              {header.position} you could have picked up for free,{' '}
-              <strong>{pct0(outlook!.breakoutRate)}</strong> finished top-12 at the position, and{' '}
-              <strong>{pct0(outlook!.vanishRate)}</strong> never took another offensive snap.
+                */}
+                <strong>{pct0(outlook!.bustRate)}</strong> of them were worth less than a{' '}
+                {header.position} you could have picked up for free,{' '}
+                <strong>{pct0(outlook!.breakoutRate)}</strong> finished top-12 at the position, and{' '}
+                <strong>{pct0(outlook!.vanishRate)}</strong> never took another offensive snap.
+              </p>
+            )}
+
+            {/*
+              Why the pool stops a year short of the newest season played, said
+              on the page instead of left for the reader to wonder about.
+
+              The panel printed the profile span alone, so a board built for 2026
+              announced itself with "2021–2024" and read as a tool that had
+              stopped ingesting a year ago. It had not: every one of those
+              seasons is followed into the year after, so the outcomes here run a
+              year later than the label did. Both ends are now stated.
+            */}
+            <p className="legend">
+              The pool ends at {outlook!.toSeason} because a season only teaches something once the
+              following one has been played — so {outlook!.toSeason} is the newest profile with an
+              answer attached, and what these seasons went on to do runs from{' '}
+              {outlook!.outcomeFromSeason} through <strong>{outlook!.outcomeToSeason}</strong>, the
+              most recent completed season.
             </p>
 
             <div className="outlook-meta">
               <Tip content={SUPPORT_NOTE[outlook!.support].detail}>
                 <span className={`tag ${SUPPORT_NOTE[outlook!.support].cls}`} tabIndex={0} style={{ cursor: 'help' }}>
-                  {SUPPORT_NOTE[outlook!.support].label} · {pct0(outlook!.closeShare)} genuine matches
+                  {outlook!.sparse ? 'no close analogue' : SUPPORT_NOTE[outlook!.support].label} ·{' '}
+                  {pct0(outlook!.closeShare)} genuine matches
                 </span>
               </Tip>
               <Tip content={`Profiled on ${outlookDetail.profileGames} games. Shares are stable from small samples — a four-game rush share predicts the next season's at r=0.919 — but points per game is noisier, so a short profile widens the range rather than sharpening it.`}>
@@ -1411,6 +1541,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
               replacement={outlookDetail.replacement !== null ? outlookDetail.replacement / 17 : null}
               digits={1}
               unit="half-PPR points per game"
+              midpointUnreliable={outlook!.sparse}
             />
 
             <h3 className="outlook-h">Across a full season</h3>
@@ -1422,20 +1553,39 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
               ownLabel={`his ${outlookDetail.profileSeason}`}
               replacement={outlookDetail.replacement}
               unit="half-PPR points, full season"
+              midpointUnreliable={outlook!.sparse}
             />
 
-            <p className="legend">
-              The band is drawn from the comparables who <strong>took the field</strong> the
-              following year; the {pct0(outlook!.vanishRate)} who did not are counted in the rate
-              above rather than dragged into the floor, because a floor that means &ldquo;out of the
-              league&rdquo; cannot be read as a floor. Of those who played, the median managed{' '}
-              <strong>{outlook!.medianNextGames.toFixed(0)}</strong> games. Closer seasons count for
-              more than distant ones.
-            </p>
+            {outlook!.sparse ? (
+              <p className="legend">
+                <strong>Read the width, not the middle.</strong> The forty seasons behind this bar
+                are the least dissimilar available rather than genuine matches, and that damages the
+                two ends of the reading differently. Checked against 74 seasons whose following year
+                is already known, the middle number roughly doubles in error — which is why it is
+                drawn faint — while the floor-to-ceiling spread still contained what actually
+                happened about as often as it does for an ordinary profile, and for receivers rather
+                more often than that. Seventy-four seasons is a small sample and running backs were
+                the one position that disagreed, so read the band as a rough width and treat his own
+                record, the depth chart and the market as the evidence.
+              </p>
+            ) : (
+              <p className="legend">
+                The band is drawn from the comparables who <strong>took the field</strong> the
+                following year; the {pct0(outlook!.vanishRate)} who did not are counted in the rate
+                above rather than dragged into the floor, because a floor that means &ldquo;out of the
+                league&rdquo; cannot be read as a floor. Of those who played, the median managed{' '}
+                <strong>{outlook!.medianNextGames.toFixed(0)}</strong> games. Closer seasons count for
+                more than distant ones.
+              </p>
+            )}
 
             {outlook!.nearest.length > 0 && (
               <>
-                <h3 className="outlook-h">Closest matches, most similar first</h3>
+                <h3 className="outlook-h">
+                  {outlook!.sparse
+                    ? 'Nearest, and none of them close'
+                    : 'Closest matches, most similar first'}
+                </h3>
                 <div className="comp-head">
                   <span />
                   <span>Player and season</span>
@@ -1474,8 +1624,11 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
                 </div>
                 <p className="legend">
                   Read row one as: <strong>{outlook!.nearest[0]!.name}</strong> scored{' '}
-                  {outlook!.nearest[0]!.ownPoints.toFixed(0)} in {outlook!.nearest[0]!.season} from a
-                  profile close to this one, and then{' '}
+                  {outlook!.nearest[0]!.ownPoints.toFixed(0)} in {outlook!.nearest[0]!.season} from{' '}
+                  {outlook!.sparse
+                    ? 'the profile least unlike this one — which is not the same as a close one —'
+                    : 'a profile close to this one,'}{' '}
+                  and then{' '}
                   {outlook!.nearest[0]!.nextPlayed ? (
                     <>
                       scored <strong>{outlook!.nearest[0]!.nextPoints.toFixed(0)}</strong> in{' '}
@@ -1490,56 +1643,6 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
                   are excluded: they are trivially the nearest profile to him and would not be an
                   answer to the question.
                 </p>
-              </>
-            )}
-          </section>
-        </>
-      )}
-
-      {outlookDetail && outlook!.sparse && (
-        <>
-          <SectionHead title="What happened to players like him" hint="no close analogue" />
-          <section className="card">
-            <p className="body">
-              <strong>No historical precedent close enough to learn from.</strong> Across every{' '}
-              {header.position} season from {outlook!.fromSeason} to {outlook!.toSeason}, his single
-              closest match sits at {outlook!.nearestDistance.toFixed(2)} standardised units — past{' '}
-              {outlook!.bands.noAnalogue.toFixed(2)}, which is where a typical{' '}
-              {header.position}&rsquo;s <em>middling</em> neighbour sits. Nothing in the record
-              looks like him.
-            </p>
-            <p className="body">
-              This is a finding about him rather than a gap in the data, and it is why no range is
-              shown: forty least-dissimilar strangers would produce a floor and a ceiling that look
-              exactly as authoritative as a well-supported read and mean nothing. His own record,
-              the depth chart and the market are the evidence here.
-            </p>
-            {outlook!.nearest.length > 0 && (
-              <>
-                <h3 className="outlook-h">Nearest, and still too far to use</h3>
-                <div className="comps">
-                  {outlook!.nearest.slice(0, 3).map((c) => (
-                    <div className="comp" key={`${c.name}-${c.season}`}>
-                      <span className="comp-rank">{c.distance.toFixed(1)}</span>
-                      <span className="comp-id">
-                        <a className="comp-name name" href={`/player/${c.playerId}`}>
-                          {c.name}
-                        </a>
-                        <span className="comp-meta">
-                          his {c.season} season · <b className="far">distant match</b>
-                        </span>
-                      </span>
-                      <span className="comp-then">
-                        {c.ownPoints.toFixed(0)}
-                        <small>{c.ownPpg.toFixed(1)} / game</small>
-                      </span>
-                      <span className={`comp-next${c.nextPlayed ? '' : ' gone'}`}>
-                        {c.nextPlayed ? c.nextPoints.toFixed(0) : '—'}
-                        <small>{c.nextPlayed ? `in ${c.season + 1}` : 'never played again'}</small>
-                      </span>
-                    </div>
-                  ))}
-                </div>
               </>
             )}
           </section>

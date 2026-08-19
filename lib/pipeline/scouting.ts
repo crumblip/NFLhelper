@@ -105,7 +105,27 @@ export interface Scouting {
   season: number;
   games: number;
   indicators: Indicator[];
+  /**
+   * The offence he will play in — keyed on his CURRENT team, not the one his
+   * stats were earned at.
+   *
+   * These are present-tense claims: who calls the plays, who throws him the
+   * ball, how the line blocks. Keying them on `player_usage.team` asserted last
+   * season's roster as current, which is family #4 and the same bug as #14, #29
+   * and #42 arriving through a different join. It hit 165 players and 31 board
+   * rows — A.J. Brown at ADP 19, Kenneth Walker at 26, Travis Etienne at 39 —
+   * and the tell was Jahan Dotson, traded to Atlanta and still reading Nick
+   * Sirianni as his play caller, on a panel whose own copy says a coaching
+   * change costs a back about 12 points.
+   *
+   * NOTE WHAT IT STILL IS. `team_context` only reaches the last season played,
+   * so this is his NEW team measured LAST year, before he arrived. Right team,
+   * past tense — and `movedFrom` is set so the page can say so rather than
+   * implying he was part of it.
+   */
   environment: TeamEnvironment;
+  /** Where his usage was earned, when that is not where he plays now. */
+  movedFrom: string | null;
   screen: ReceiverScreen | null;
   /** Run direction, for backs. Direction is not blocking scheme — see below. */
   runSplit: { outside: number; tackle: number; inside: number; outsideYpc: number | null; insideYpc: number | null } | null;
@@ -114,7 +134,10 @@ export interface Scouting {
 interface Raw {
   playerId: string;
   position: string;
+  /** His team NOW — the key for the environment below. */
   team: string | null;
+  /** The team his usage was earned at, which may not be the same one. */
+  usageTeam: string | null;
   age: number | null;
   games: number;
   points: number;
@@ -173,9 +196,20 @@ export function buildScouting(season: number): Map<string, Scouting> {
     env.set(e.team, { ...e, coachTopBackShare: concentration.get(e.headCoach ?? "") ?? null });
   }
 
+  /*
+   * His team NOW, from the current depth chart, falling back to the roster
+   * field and finally to the usage row.
+   *
+   * Position-matched listing first, exactly as `lib/waiver.ts` does it: a
+   * MIN(pos_rank) across every listing picks a kick-return entry over the real
+   * one (#3), and `team` has to come from the same row as the rank or it is
+   * two different listings spliced together.
+   */
   const rows = sqlite
     .prepare(
-      `SELECT u.player_id AS playerId, u.position, u.team,
+      `SELECT u.player_id AS playerId, u.position,
+              COALESCE(dcp.team, dca.team, p.latest_team, u.team) AS team,
+              u.team AS usageTeam,
               ? - CAST(substr(p.birth_date,1,4) AS INTEGER) AS age,
               COALESCE(u.target_share,0) AS targetShare,
               COALESCE(u.pass_snaps,0) AS passSnaps,
@@ -192,9 +226,19 @@ export function buildScouting(season: number): Map<string, Scouting> {
        FROM player_usage u
        JOIN players p ON p.gsis_id = u.player_id
        LEFT JOIN player_scheme s ON s.player_id = u.player_id AND s.season = u.season
+       LEFT JOIN (SELECT player_id, pos_abb, team, MIN(pos_rank) AS rank
+                  FROM depth_chart WHERE season = ?
+                  GROUP BY player_id, pos_abb) dcp
+         ON dcp.player_id = u.player_id AND dcp.pos_abb = u.position
+       LEFT JOIN (SELECT player_id, team, MIN(pos_rank) AS rank
+                  FROM depth_chart WHERE season = ?
+                  GROUP BY player_id) dca
+         ON dca.player_id = u.player_id
        WHERE u.season = ? AND u.position IN ('QB','WR','RB','TE')`,
     )
-    .all(usageSeason, usageSeason) as Array<Omit<Raw, 'games' | 'points' | 'env'>>;
+    .all(usageSeason, season, season, usageSeason) as Array<
+      Omit<Raw, 'games' | 'points' | 'env'> & { usageTeam: string | null }
+    >;
 
   const games = new Map<string, number>();
   for (const r of sqlite
@@ -406,6 +450,9 @@ export function buildScouting(season: number): Map<string, Scouting> {
       games: r.games,
       indicators,
       environment: r.env,
+      // Null unless he actually moved, so the page can branch on truthiness
+      // instead of comparing two team strings at every call site.
+      movedFrom: r.usageTeam && r.usageTeam !== r.team ? r.usageTeam : null,
       screen,
       runSplit,
     });

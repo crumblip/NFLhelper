@@ -1,6 +1,9 @@
 import { sqlite } from '../lib/db/index';
 import { getWaiverBoard } from '../lib/waiver';
 import { USAGE_CONFIDENCE, GAP_DEAD_BAND } from '../lib/pipeline/blend';
+import { buildScouting } from '../lib/pipeline/scouting';
+import { buildRoleCertainty } from '../lib/pipeline/role';
+import { readdirSync, readFileSync } from 'node:fs';
 
 /**
  * Standing invariant checks on the built board.
@@ -306,6 +309,246 @@ check(
   `${backupButFirst.length}: ${backupButFirst.map((r) => r.name).join(', ')}`,
 );
 
+/*
+ * THE DEPTH CHART IS A SNAPSHOT, NOT AN ACCUMULATION.
+ *
+ * nflverse ships depth charts as dated snapshots and the ingest used to keep the
+ * newest row per (player, position). That is not the same rule: a player cut in
+ * August has no August row, so his July row was still his newest and he stayed
+ * on the chart at a team that had moved on. 610 of 3,792 rows were leftovers of
+ * that kind, 41 of them skill players — Harrison Bryant listed at Seattle while
+ * under contract in Houston, Mike Woods at Denver with a status of CUT.
+ *
+ * It matters because the waiver page REQUIRES a listing, so a departed player
+ * stayed claimable, and the depth-chart room showed team-mates who had left.
+ *
+ * Two things make a chart a snapshot, and both are checked: every row for a team
+ * carries that team's one current date, and no player is listed at two teams at
+ * once. The second is the observable symptom of the first and is worth testing
+ * separately, because a future ingest could hold one date per team and still
+ * duplicate a player across them.
+ */
+{
+  const dated = sqlite
+    .prepare(
+      `SELECT team, COUNT(DISTINCT as_of) dates, COUNT(*) n
+       FROM depth_chart WHERE season = ? GROUP BY team`,
+    )
+    .all(SEASON) as Array<{ team: string; dates: number; n: number }>;
+  const mixed = dated.filter((t) => t.dates > 1);
+  check(
+    'every depth chart is one dated snapshot per team, not a pile of them',
+    mixed.length === 0,
+    `${mixed.length} teams hold rows from several charts at once: ` +
+      mixed.slice(0, 4).map((t) => `${t.team} (${t.dates} dates)`).join(', '),
+  );
+
+  const twoTeams = sqlite
+    .prepare(
+      `SELECT p.display_name AS name, GROUP_CONCAT(DISTINCT d.team) AS teams
+       FROM depth_chart d JOIN players p ON p.gsis_id = d.player_id
+       WHERE d.season = ? AND p.position IN ('QB','WR','RB','TE')
+       GROUP BY d.player_id HAVING COUNT(DISTINCT d.team) > 1`,
+    )
+    .all(SEASON) as Array<{ name: string; teams: string }>;
+  check(
+    'no player is on two depth charts at once',
+    twoTeams.length === 0,
+    `${twoTeams.length}: ${twoTeams.slice(0, 4).map((r) => `${r.name} (${r.teams})`).join(', ')}`,
+  );
+}
+
+/*
+ * EVERY ARROW ON THE DEPTH CHART NAMES A FACT ABOUT THIS ROOM.
+ *
+ * The trend column fired on artefacts in three separate ways, and each produced
+ * a confident arrow with nothing behind it:
+ *
+ *   - `depthRank > usageRank` compared a rank over the whole room against a rank
+ *     over only the men with any usage, so the third role-holder in a
+ *     fifteen-man camp room read "out-produced the men listed above him". Ricky
+ *     Pearsall carried it at depth 14 (family #3/#5).
+ *   - shares were compared across teams, so Brian Thomas Jr — Jacksonville's WR1
+ *     — read losing ground because Jakobi Meyers arrived holding a bigger share
+ *     of Las Vegas's targets (family #4, and bug #42's exact mistake).
+ *   - a man could "slip" on availability without holding a job at all: Brady
+ *     Cook, the third quarterback, at "5.0 games a year". True number, false
+ *     claim.
+ *
+ * Three invariants, each tied to one of those:
+ *   1. a slip or a rise from a share comparison must name a same-team player
+ *   2. an arrival never carries an arrow
+ *   3. only the man listed first can slip on his own availability
+ */
+{
+  const rooms = buildRoleCertainty(SEASON);
+  const seenRow = new Set<string>();
+  const crossTeam: string[] = [];
+  const arrivalArrow: string[] = [];
+  const slipWithoutJob: string[] = [];
+  const unexplained: string[] = [];
+
+  for (const rc of rooms.values()) {
+    const byId = new Map(rc.room.map((m) => [m.playerId, m]));
+    for (const m of rc.room) {
+      if (seenRow.has(m.playerId)) continue;
+      seenRow.add(m.playerId);
+
+      if (m.trend !== 'holding' && m.shareTeam) arrivalArrow.push(m.name);
+
+      // A comparison reason names another man; he must be in this room and his
+      // share must have been earned here.
+      const named = [...byId.values()].find(
+        (x) => x.playerId !== m.playerId && m.trendReason.includes(x.name),
+      );
+      if (named && /took more of the work here|listed below him/.test(m.trendReason) && named.shareTeam) {
+        crossTeam.push(`${m.name} <- ${named.name} (@${named.shareTeam})`);
+      }
+
+      // An availability slip carries a measured figure and belongs only to the
+      // man listed first. A room-fact slip names somebody and is exempt.
+      if (m.trend === 'slipping' && !named && m.depthRank !== 1) {
+        slipWithoutJob.push(`${m.name} (depth ${m.depthRank}: ${m.trendReason})`);
+      }
+
+      /*
+       * THE INVARIANT THAT ACTUALLY CATCHES THE ORIGINAL BUG.
+       *
+       * The first three checks here all passed while the broken rule was
+       * restored, because the artefact produced a RISING arrow reading
+       * "out-produced the men listed above him" — no team involved, nobody
+       * named, nothing to contradict. A check that does not fire on the bug it
+       * was written for is worse than no check, since the passing line reads as
+       * coverage (#95's lesson, and rule 4 of the working notes).
+       *
+       * So: an arrow must be backed by ONE of the two things that can back it —
+       * a named man in this room, or a measured figure about himself. A claim
+       * about "the men above him" that cannot say which men is neither, and
+       * that is exactly the shape of the rank-mismatch bug.
+       *
+       * Same standard as `every "measured" point quotes the number behind it`.
+       */
+      if (m.trend !== 'holding' && !named && !/\d/.test(m.trendReason)) {
+        unexplained.push(`${m.name}: "${m.trendReason}"`);
+      }
+    }
+  }
+
+  check(
+    'no depth-chart arrow rests on a share earned at another team',
+    crossTeam.length === 0,
+    `${crossTeam.length}: ${crossTeam.slice(0, 3).join(', ')}`,
+  );
+  check(
+    'a player who changed teams carries no direction arrow',
+    arrivalArrow.length === 0,
+    `${arrivalArrow.length}: ${arrivalArrow.slice(0, 4).join(', ')} — his share was earned elsewhere`,
+  );
+  check(
+    'only the man listed first can be losing ground on his own availability',
+    slipWithoutJob.length === 0,
+    `${slipWithoutJob.length}: ${slipWithoutJob.slice(0, 3).join(', ')} — no job to lose`,
+  );
+  check(
+    'every depth-chart arrow names a man or quotes a number',
+    unexplained.length === 0,
+    `${unexplained.length} arrows claim a comparison they cannot point at: ${unexplained.slice(0, 3).join(', ')}`,
+  );
+
+  /*
+   * And the room is a fantasy room, not a camp roster.
+   *
+   * nflverse publishes 90-man charts — 10 to 15 receivers a team — and a
+   * seventh back is not an asset, a contingency, or on the roster in three
+   * weeks. The cut is measured (see ROOM_DEPTH); this checks it is actually
+   * applied, and that it did not go so far that a room stops describing a
+   * position group.
+   */
+  const sizes = new Map<string, number[]>();
+  const seenRoom = new Set<string>();
+  for (const rc of rooms.values()) {
+    const key = rc.room.map((m) => m.playerId).sort().join(',');
+    if (seenRoom.has(key) || rc.room.length === 0) continue;
+    seenRoom.add(key);
+    const pos = sqlite
+      .prepare(`SELECT pos_abb FROM depth_chart WHERE season=? AND player_id=? LIMIT 1`)
+      .get(SEASON, rc.room[0]!.playerId) as { pos_abb: string } | undefined;
+    if (!pos) continue;
+    (sizes.get(pos.pos_abb) ?? sizes.set(pos.pos_abb, []).get(pos.pos_abb)!).push(rc.room.length);
+  }
+  const bloated = [...sizes].filter(([, ns]) => Math.max(...ns) > 10);
+  const gutted = [...sizes].filter(([, ns]) => Math.min(...ns) < 2);
+  check(
+    'no depth chart is still a camp roster',
+    bloated.length === 0,
+    `${bloated.map(([p, ns]) => `${p} runs to ${Math.max(...ns)}`).join(', ')}`,
+  );
+  check(
+    'no depth chart was cut down to nothing',
+    gutted.length === 0,
+    `${gutted.map(([p, ns]) => `${p} falls to ${Math.min(...ns)}`).join(', ')}`,
+  );
+}
+
+/*
+ * A PRESENT-TENSE CLAIM ABOUT AN OFFENCE MUST NAME THE OFFENCE HE IS IN.
+ *
+ * The scouting panel — play caller, scoring offence, quarterback, offensive
+ * line — was keyed on `player_usage.team`, which is last season's roster. 165
+ * players had changed teams and 31 of them were on the board, so A.J. Brown was
+ * scouted against Philadelphia's offence while playing for New England and Jahan
+ * Dotson read Nick Sirianni as his play caller after a trade to Atlanta. Family
+ * #4, and the same join error as #14, #29 and #42.
+ *
+ * The environment is still measured LAST season — `team_context` is built from
+ * play-by-play and the coming season has not been played — so the right team in
+ * the past tense is the best available, and the page says so. What must never
+ * happen again is the wrong team.
+ */
+{
+  const scoutingRows = buildScouting(SEASON);
+  const currentTeam = new Map(
+    (
+      sqlite
+        .prepare(
+          `SELECT d.player_id, d.team FROM depth_chart d
+           JOIN (SELECT player_id, pos_abb, MIN(pos_rank) mr FROM depth_chart
+                 WHERE season = ? GROUP BY player_id, pos_abb) m
+             ON m.player_id = d.player_id AND m.pos_abb = d.pos_abb AND m.mr = d.pos_rank
+           WHERE d.season = ?`,
+        )
+        .all(SEASON, SEASON) as Array<{ player_id: string; team: string }>
+    ).map((r) => [r.player_id, r.team]),
+  );
+
+  const wrongOffence = [...scoutingRows.values()].filter((s) => {
+    const listed = currentTeam.get(s.playerId);
+    return listed && s.environment.team && s.environment.team !== listed;
+  });
+  check(
+    'the offence on the scouting panel is the one he currently plays for',
+    wrongOffence.length === 0,
+    `${wrongOffence.length} players are scouted against a team they have left: ` +
+      wrongOffence
+        .slice(0, 4)
+        .map((s) => `${s.playerId} env=${s.environment.team} chart=${currentTeam.get(s.playerId)}`)
+        .join(', '),
+  );
+
+  // The flag the page branches on has to disagree with the team it sits beside,
+  // or the caveat reads "he arrives from Atlanta" above Atlanta's own numbers —
+  // a claim of movement about a player who stayed put, which is worse than no
+  // caveat at all.
+  const badMoved = [...scoutingRows.values()].filter(
+    (s) => s.movedFrom !== null && s.movedFrom === s.environment.team,
+  );
+  check(
+    'the "he arrives from" note names a team he actually left',
+    badMoved.length === 0,
+    `${badMoved.length} rows say a player arrived from the team he is already on`,
+  );
+}
+
 /* ------------------------------------------------------------------ */
 console.log('\nSCALE MISMATCH — is missing data being read as bad performance?');
 
@@ -427,6 +670,51 @@ check(
   `${prose.n} rows hold JSON where a sentence is expected — the outlook column did ` +
     `exactly this and printed itself at the reader`,
 );
+
+/*
+ * NO `title=` ATTRIBUTES. The rule was written down and then broken three times.
+ *
+ * The native attribute waits about a second, cannot be styled, and never appears
+ * on a touch device — so on a page whose whole argument is that every number
+ * carries its explanation, it is the same as no explanation. `Tip` exists for
+ * this and is used everywhere else.
+ *
+ * It had crept back into the weekly chart (one per bar, the only way to read an
+ * individual week), the depth-chart room (a duplicate of text already rendered
+ * one column over) and the theme toggle (a duplicate of its own `aria-label`).
+ * A rule in a document is not enforcement, so this greps the source.
+ *
+ * Matches only the JSX attribute form `title={` / `title="` on a lowercase HTML
+ * element line, because `<SectionHead title="..." />` is a React prop of the
+ * same name and is entirely fine — a checker that cannot tell those apart would
+ * fire on 20 correct call sites and be turned off within a day.
+ */
+{
+  const files = readdirSync('app', { recursive: true, encoding: 'utf8' })
+    .filter((f) => f.endsWith('.tsx'))
+    .map((f) => `app/${f}`.replace(/\\/g, '/'));
+
+  const offenders: string[] = [];
+  for (const file of files) {
+    const lines = readFileSync(file, 'utf8').split('\n');
+    lines.forEach((line, i) => {
+      if (!/(^|\s)title=[{"']/.test(line)) return;
+      // Walk back to the tag this attribute belongs to. A capitalised tag is a
+      // React component and `title` is its prop.
+      let tag = '';
+      for (let j = i; j >= 0 && j > i - 12; j--) {
+        const m = [...lines[j]!.matchAll(/<([A-Za-z][\w.]*)/g)].pop();
+        if (m) { tag = m[1]!; break; }
+      }
+      if (tag && /^[a-z]/.test(tag)) offenders.push(`${file}:${i + 1} <${tag}>`);
+    });
+  }
+  check(
+    'no native title attribute on an HTML element — explanations use Tip',
+    offenders.length === 0,
+    `${offenders.length}: ${offenders.slice(0, 4).join(', ')}`,
+  );
+}
 
 const badOutlook = rows.filter((r) => {
   if (!r.outlook) return false;
@@ -1093,6 +1381,10 @@ interface StoredOutlook {
   n: number;
   sparse: boolean;
   support: string;
+  fromSeason: number;
+  toSeason: number;
+  outcomeFromSeason: number;
+  outcomeToSeason: number;
   closeShare: number;
   nearestDistance: number;
   bands: { close: number; loose: number; noAnalogue: number };
@@ -1281,6 +1573,55 @@ check(
   'no outlook rests on fewer than four games',
   thinProfile.length === 0,
   `${thinProfile.length}: ${thinProfile.slice(0, 3).map((r) => `${r.name} ${r.profileGames}g`).join(', ')}`,
+);
+
+/*
+ * EVERY player with an outlook gets a range — the panel is one panel.
+ *
+ * The no-analogue branch used to return zeroes for floor, median and ceiling,
+ * so 41 of 511 players — Nacua, Smith-Njigba, McCaffrey and Rice among them —
+ * showed a comparison list and no chart while everyone else showed both. A
+ * reader starting at the top of the board met the exception first and read it
+ * as a missing feature.
+ *
+ * The suppression was also against the project's own calibration, twice over:
+ * `calibrate:comparables` buckets backtested seasons by BOTH readings of
+ * neighbourhood quality and gets the same answer from each — a loose
+ * neighbourhood breaks the MIDPOINT and leaves the RANGE working (interval
+ * coverage 0.89 at receiver against a 0.60 target, on the largest suppressed
+ * group). So the range is drawn for everyone and the midpoint is marked rough.
+ *
+ * Two failure modes here, and the check has to catch both: a range that is
+ * missing, and a range that is present but collapsed to a placeholder. A
+ * degenerate floor == ceiling is the second one wearing the first one's clothes.
+ */
+const noRange = outlooks.filter(
+  (r) => !Number.isFinite(r.o.floor) || !Number.isFinite(r.o.ceiling) || r.o.ceiling <= r.o.floor,
+);
+check(
+  'every outlook carries a drawable range, including the ones with no close analogue',
+  noRange.length === 0,
+  `${noRange.length} rows have no range to draw: ${noRange.slice(0, 3).map((r) => r.name).join(', ')}`,
+);
+
+/*
+ * The panel must not date itself a year stale.
+ *
+ * The pool stops one season short of the newest one played, because a season
+ * teaches nothing until the following year is in the books. The page was
+ * labelled with that profile span alone, so a 2026 board announced "2021–2024"
+ * while the outcomes it draws from ran through 2025 — an accurate number
+ * reading as an out-of-date tool. Both ends are carried now, and the outcome
+ * end has to actually be the profile end plus one.
+ */
+const spanSlip = outlooks.filter(
+  (r) => r.o.outcomeToSeason !== r.o.toSeason + 1 || r.o.outcomeFromSeason !== r.o.fromSeason + 1,
+);
+check(
+  'the outlook states the seasons its outcomes come from, one past the profiles',
+  spanSlip.length === 0,
+  `${spanSlip.length} rows disagree with their own span: ` +
+    `${spanSlip.slice(0, 3).map((r) => `${r.name} ${r.o.fromSeason}-${r.o.toSeason} -> ${r.o.outcomeFromSeason}-${r.o.outcomeToSeason}`).join(', ')}`,
 );
 
 /* ------------------------------------------------------------------ */
@@ -1811,7 +2152,7 @@ console.log('\nCROSS-POSITION — does any board column just select a position?'
  * builder always writes cannot have come from the current builder.
  */
 {
-  const REQUIRED = ['support', 'vanishRate', 'bands', 'closeShare', 'medianPpg'];
+  const REQUIRED = ['support', 'vanishRate', 'bands', 'closeShare', 'medianPpg', 'outcomeToSeason'];
   const stale = (
     sqlite
       .prepare(

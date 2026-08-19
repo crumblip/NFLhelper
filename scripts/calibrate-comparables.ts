@@ -481,3 +481,103 @@ for (const position of POSITIONS) {
     );
   }
 }
+
+/* ------------------------------------------------- the "no analogue" gate */
+
+/**
+ * Does the range actually fail for the players the page refuses to draw one for?
+ *
+ * `comparables.ts` returns early — no floor, no median, no ceiling — whenever a
+ * player's single nearest historical season sits past his position's
+ * `noAnalogue` band. 41 of 511 players hit that branch, including Puka Nacua,
+ * Jaxon Smith-Njigba, Christian McCaffrey and Rashee Rice, so four of the twelve
+ * most expensive players on the board show a comparison list and no chart while
+ * everyone else shows both.
+ *
+ * `qualityBuckets` above already tested the OTHER quality axis — the share of
+ * the forty that are genuine matches — and found the midpoint degrades while
+ * interval coverage holds, which is why the shipped conclusion is "report
+ * support and read the spread, do not suppress the range". The suppression gate
+ * is a different quantity and has never been tested against that standard. This
+ * does it, replicating the shipped gate exactly: the same 95th-percentile
+ * nearest-distance band, floored at the median neighbour, then MAE and coverage
+ * either side of it.
+ *
+ * If coverage holds at ~0.60 for the suppressed group the branch is removing a
+ * band that works, and the honest surface is the range plus a strong caveat.
+ */
+function noAnalogueBucket(v: Variant) {
+  console.log('the gate the player page uses to suppress the range entirely.');
+  console.log('coverage should be 0.60. MAE is the error on the MIDPOINT only.\n');
+  console.log('pos  band   group                    n     MAE   coverage');
+
+  for (const position of POSITIONS) {
+    const usable = pool.filter((r) => r.position === position);
+    if (usable.length < 60) continue;
+
+    const w = v.weights[position]!;
+    const keys = Object.keys(w).filter((k) => (w[k as FeatureKey] ?? 0) > 0) as FeatureKey[];
+    const primary = (r: Season) =>
+      position === 'RB' ? r.rushShare : position === 'QB' ? r.routeShare : r.targetShare;
+    const holders = usable.filter((r) => primary(r) >= (position === 'QB' ? 0.4 : 0.1));
+    const scalePool = holders.length >= 30 ? holders : usable;
+    const scale = {} as Record<FeatureKey, number>;
+    for (const k of keys) scale[k] = iqr(scalePool.map((r) => r[k])) || 1;
+
+    const dist = (a: Season, b: Season) => {
+      let sum = 0;
+      for (const k of keys) {
+        if (k === 'routeShare' && (a.routeShare <= 0 || b.routeShare <= 0)) continue;
+        sum += w[k]! * ((a[k] - b[k]) / scale[k]!) ** 2;
+      }
+      return Math.sqrt(sum);
+    };
+
+    // Every target's neighbourhood, computed once and reused for both the band
+    // calibration and the bucketing — the shipped code does the same, and a band
+    // measured on a different set than it is applied to would not be the gate.
+    const rows = usable.map((target) => {
+      const scored = usable
+        .filter((c) => c.playerId !== target.playerId)
+        .map((c) => ({ r: c, d: dist(c, target) }))
+        .sort((a, b) => a.d - b.d)
+        .slice(0, v.k);
+      return { target, picked: scored, nearest: scored[0]!.d, mid: scored[Math.floor(scored.length / 2)]!.d };
+    });
+
+    const at = (arr: number[], p: number) => arr[Math.min(arr.length - 1, Math.floor(p * arr.length))]!;
+    const close = at(rows.map((x) => x.mid).sort((a, b) => a - b), 0.5);
+    const noAnalogue = Math.max(at(rows.map((x) => x.nearest).sort((a, b) => a - b), 0.95), close);
+
+    const buckets = new Map<string, { n: number; err: number; inside: number; graded: number }>();
+    for (const { target, picked, nearest } of rows) {
+      const band = picked
+        .filter((s) => s.r.nextPlayed)
+        .map((s) => ({ v: s.r.nextPoints, w: 1 / (0.35 + s.d) }))
+        .sort((a, b) => a.v - b.v);
+      if (!band.length) continue;
+
+      const key = nearest > noAnalogue ? 'SUPPRESSED (no analogue)' : 'shown (has an analogue)';
+      const b = buckets.get(key) ?? { n: 0, err: 0, inside: 0, graded: 0 };
+      b.n++;
+      b.err += Math.abs(wq(band, 0.5) - target.nextPoints);
+      if (target.nextPlayed) {
+        b.graded++;
+        if (target.nextPoints >= wq(band, 0.2) && target.nextPoints <= wq(band, 0.8)) b.inside++;
+      }
+      buckets.set(key, b);
+    }
+
+    for (const key of ['shown (has an analogue)', 'SUPPRESSED (no analogue)']) {
+      const b = buckets.get(key);
+      if (!b) continue;
+      console.log(
+        `${position.padEnd(4)} ${noAnalogue.toFixed(2)}   ${key.padEnd(24)} ${String(b.n).padStart(4)} ` +
+          `${(b.err / b.n).toFixed(1).padStart(7)} ${(b.inside / (b.graded || 1)).toFixed(2).padStart(10)}`,
+      );
+    }
+  }
+}
+
+console.log('\n\n================ does the no-analogue gate earn its suppression? ================');
+noAnalogueBucket(VARIANTS.find((v) => v.label.startsWith('M'))!);

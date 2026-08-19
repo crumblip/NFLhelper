@@ -59,7 +59,8 @@
     "diagnose:deadband": "tsx scripts/diagnose-deadband.ts",
     "calibrate:lateboard": "tsx scripts/calibrate-lateboard.ts",
     "yahoo:auth": "tsx scripts/yahoo-auth.ts",
-    "ingest:yahoo": "tsx scripts/ingest-yahoo.ts"
+    "ingest:yahoo": "tsx scripts/ingest-yahoo.ts",
+    "check:freshness": "tsx scripts/check-freshness.ts"
   },
   "dependencies": {
     "@radix-ui/react-hover-card": "^1.1.23",

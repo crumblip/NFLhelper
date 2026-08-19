@@ -1266,8 +1266,9 @@ Backup QBs failed it while being entirely correct. Thresholds get measured first
    `lib/pipeline/trajectory.ts` (in-season role direction, which is untested
    because the season has not started).
 9. **The hover/interaction pass is only half done.** The six headline tiles on
-   the player page explain themselves via `Stat`; the comparables rows, depth
-   chart rows and prop table do not.
+   the player page explain themselves via `Stat`; the comparables rows and the
+   prop table do not. The depth-chart rows and the weekly bars are done (#101) —
+   the weekly bars carry a real `Tip` per week and are keyboard-reachable.
 
 ---
 
@@ -1728,14 +1729,283 @@ existed. Two rules out of it: never run `drizzle-kit push --force` here, and any
 column written by a build script must be declared in `schema.ts` the same day, or
 the next schema operation will quietly delete it.
 
+### #97 — the comparables panel was two different panels, and one of them was the top of the draft
+
+Players whose nearest historical season sat past their position's `noAnalogue`
+band got a comparison list and **no range**; everyone else got both. **41 of 511
+players, 18 of them on the board — including Puka Nacua (ADP 2.6), Jaxon
+Smith-Njigba (5.2), Christian McCaffrey (5.9) and Rashee Rice (12.4).** Four of
+the twelve most expensive players in the draft, so a reader starting at the top
+met the exception before the rule and read the missing chart as a missing
+feature rather than as a finding.
+
+**The suppression contradicted this file's own calibration.** The `calibrate:comparables`
+entry already said, of the *other* quality axis: *"A thin neighbourhood breaks the
+midpoint, not the range… do not suppress the range."* The gate that suppresses
+is a different quantity (`nearestDistance` against the band, not `closeShare`)
+and had never been held to that standard. `calibrate:comparables` now does it —
+replicating the shipped band exactly and bucketing every backtested season
+either side of it:
+
+| pos | coverage shown | coverage SUPPRESSED | MAE shown → suppressed | n suppressed |
+|---|---|---|---|---|
+| QB | 0.58 | **0.83** | 86.5 → 51.7 | 8 |
+| RB | 0.60 | **0.46** | 43.3 → 79.8 | 15 |
+| WR | 0.62 | **0.89** | 33.8 → 39.5 | 33 |
+| TE | 0.57 | **0.65** | 25.0 → 32.9 | 18 |
+
+**Same shape, second axis: the midpoint breaks, the range does not.** Error on
+the median roughly doubles at RB while interval coverage holds or runs *wide* —
+0.89 at receiver against a 0.60 target, on the largest suppressed group and the
+position 11 of 13 picks come from. A band covering 89% of outcomes is vague, not
+misleading, and vague-but-drawn beats absent. **RB at 0.46 on 15 seasons is the
+one dissent**; the group is 74 seasons total, so this is directional evidence and
+the page says which half of it to trust.
+
+**Shipped: one panel for everyone.** The range is drawn for all 511, the median
+marker is dashed and labelled `median · rough` where there is no close analogue,
+and the legend says read the width, not the middle — including the RB dissent and
+the sample size. `sparse` keeps the two jobs it earned: it drives that warning,
+and it still withholds the **rates** and the ranked percentiles, which this
+measurement does not cover and which #93 was about. The written read, the Topps
+card blurb and the "Comparable output" tile were all asserting "no range can be
+drawn" and now quote the **spread and never the midpoint** — a page that argues
+for its own rigour cannot contradict its own chart three inches up (#75, #78).
+
+**#98 — the panel dated itself a year stale.** It was labelled with the profile
+span alone, so a board built for 2026 announced **"2021–2024"** while the outcomes
+it draws from run through **2025**. The pool genuinely stops at 2024 — a season
+teaches nothing until the following one is played — but the label made a correct
+number read as a tool that had stopped ingesting a year ago. `outcomeFromSeason`
+/ `outcomeToSeason` are now carried on the outlook (derived once, not `+1` at
+each call site — #71), the hint reads `2021–2024 · outcomes to 2025`, and the
+panel states *why* the pool ends where it does instead of leaving the reader to
+wonder.
+
+Two audit checks, both negative-tested: `every outlook carries a drawable range,
+including the ones with no close analogue` (catches a missing range **and** one
+collapsed to a placeholder) and `the outlook states the seasons its outcomes come
+from, one past the profiles`.
+
+### #99 — the depth chart was an accumulation, not a snapshot
+
+nflverse ships depth charts as dated snapshots. The ingest kept **the newest row
+per (player, position)**, which sounds like "the current chart" and is not: a
+player cut in August has no August row, so his July row was still the newest one
+*he* had, and he stayed on the chart forever at a team that had moved on.
+
+**610 of 3,792 rows were leftovers, 41 of them skill players** — Harrison Bryant
+listed at Seattle while under contract in Houston, Mike Woods at Denver with a
+status of CUT, Cam Akers on an April chart in August. Three players were listed
+on **two teams at once**; the primary key is `(season, player_id, pos_abb)`, so a
+stale row survives at any *other* position slot, which is why the key was never
+protection.
+
+It is not cosmetic. **The waiver page requires a depth-chart listing**, so a
+departed player stayed claimable all season; the depth-chart room showed
+team-mates who had left; and every consumer joining on `depth_chart` inherited
+it. Same family as #9, #64 and #94 — a write path that only upserts cannot
+express "this row should stop existing".
+
+**Fixed at the ingest: newest snapshot date PER TEAM, then DELETE the season
+before writing.** Per team rather than globally, because teams publish on their
+own days and a global cut-off would erase whichever team had not posted that
+morning. A player who moved has a row on both charts and keeps the newer; a
+player who was cut appears on neither. 446,130 snapshot rows now reduce to 3,219
+current entries on one date across 32 teams.
+
+Two audit checks, negative-tested: `every depth chart is one dated snapshot per
+team, not a pile of them` and `no player is on two depth charts at once`.
+
+### #100 — the whole scouting panel was keyed on last season's team
+
+Found from one screenshot: **Jahan Dotson, traded to Atlanta, still reading Nick
+Sirianni as his play caller** — on a panel whose own copy says a coaching change
+costs a running back about 12 points.
+
+`buildScouting` joined the team environment on `player_usage.team`, which is last
+season's roster. Every claim in that block is present tense — who calls the
+plays, who throws him the ball, how the line blocks, how good the offence is —
+and **165 players had changed teams, 31 of them on the board**: A.J. Brown
+(ADP 19, scouted against Philadelphia while playing for New England), Kenneth
+Walker (26), Travis Etienne (39), DJ Moore (49), Jaylen Waddle (50), Mike Evans
+(60). Family #4, and the same join error as #14, #29 and #42 arriving through a
+different query.
+
+The environment is now keyed on the **current** team — position-matched depth
+chart, then `latest_team`, then the usage row, the same COALESCE ladder
+`lib/waiver.ts` uses for bug #14.
+
+**NOTE WHAT IT STILL IS, because this is the part that will be misread.**
+`team_context` is built from play-by-play and only reaches the last season
+played, so this is his NEW team measured LAST year, before he arrived. Right
+team, past tense. `Scouting.movedFrom` carries the old team so the page states
+it outright — *"He arrives from PHI, so every number in this block is ATL in
+2025 — the offence he is joining, measured the season before he joined it"* —
+and the coach tile is labelled `HEAD COACH, ATL` rather than showing a bare name
+a reader has no way to check.
+
+Two audit checks, negative-tested by reverting the fix:
+`the offence on the scouting panel is the one he currently plays for` and
+`the "he arrives from" note names a team he actually left`.
+
+### #101 — the `title=` ban was a rule with no enforcement, and had been broken three times
+
+`app/globals.css` and this file both say **no `title=` attributes** — the native
+attribute waits about a second, cannot be styled, and never appears on touch, so
+on a page arguing that every number carries its explanation it is the same as no
+explanation. It had crept back into three places:
+
+- **the weekly chart** — one per bar, and a bar is ten pixels wide, so it was the
+  only way to read an individual week. Now a real `Tip`, and each bar is
+  focusable with a visible focus ring, so the chart is readable from the keyboard
+  rather than mouse-only. The text improved in passing: *"Week 4 — 4.8 points,
+  below the 7-point line"* against *"Week 4: 4.8 pts"*.
+- **the depth-chart room** — a duplicate of the reason already rendered as
+  visible text one column over. Deleted, nothing lost.
+- **the theme toggle** — a duplicate of its own `aria-label`. Deleted; the
+  `aria-label` is the accessible name and was always doing the real work.
+
+Audit check `no native title attribute on an HTML element — explanations use Tip`
+greps `app/**/*.tsx`, matching only the attribute on a **lowercase** tag, because
+`<SectionHead title="..." />` is a React prop of the same name and a check that
+cannot tell those apart would fire on twenty correct call sites and be switched
+off within a day. Negative-tested.
+
+### `npm run check:freshness` — how old is every fact, and what refreshes it
+
+Written after #99 and #100, because neither was visible from inside the app:
+every page rendered, every number was plausible, and the only tell was a reader
+who happened to know one player had moved. **A stale fact does not announce
+itself**, and this tool has sources on four different clocks — daily rosters, a
+rolling ADP window, a credit-metered prop feed, and season tables frozen until
+September. Nothing showed them in one place, so answering "is this current?" took
+a database session.
+
+It is a **report, not a check**: it does not fail a build and is not wired into
+`refresh`. `npm run audit` asks whether the board is internally consistent; this
+asks whether it is still true, which is a judgement call about what is worth
+spending on and when. It names the refresh command per source and marks the props
+line as costing API credits, since that is the one that should never be pulled
+reflexively.
+
+It immediately found the roster feed ten days behind the depth chart, which is
+**the lag that hides a trade** — 37 skill players listing a team the chart
+disagreed with. Re-running `ingest:nflverse` and `refresh:adp` (both free) took
+that to 5, all undrafted fringe players. Props were left stale deliberately:
+refreshing them costs credits and that is the user's call.
+
+### #102 — the depth chart was a 90-man camp roster pretending to be a fantasy room
+
+The room listed everyone nflverse publishes: **10 to 15 receivers a team, up to
+eight backs.** A seventh running back is not an asset, not a contingency, and
+not on the roster in three weeks — and his row costs the reader exactly as much
+attention as the starter's.
+
+**The cut is measured, from two independent readings that agree.** How many men
+per team ever hold a real share (8%+ of the position's work), across 160
+team-seasons 2021-2025 — 95th percentile **QB 4 · RB 5 · WR 6 · TE 3**. And what
+a listing at each rank implies, the share of men at that rank who held a role
+last season:
+
+| rank | 1 | 2 | 3 | 4 | 5 | 6 | 7+ |
+|---|---|---|---|---|---|---|---|
+| QB | 97% | 69% | 34% | 9% | 0% | — | — |
+| RB | 97% | 81% | 38% | 34% | 19% | 14% | — |
+| WR | 97% | 94% | 66% | 28% | 25% | 16% | ≤9% |
+| TE | 97% | 44% | 3% | 13% | 0% | — | — |
+
+The cliff lands in the same place both ways, so `ROOM_DEPTH` is QB 4 · RB 5 ·
+WR 6 · TE 3. Rooms went from 10-15 to **QB 3-4 · RB 4-7 · WR 6-8 · TE 2-4**.
+
+**A rank cut alone would have been wrong**, and this is the part worth keeping.
+The chart lists a drafted receiver at WR11 and **Ricky Pearsall at WR14** — deep
+on a camp chart and irrelevant are not the same statement, and a tool that
+conflated them would drop exactly the men whose roles are about to change. So
+the cut applies only to players about whom nothing else is known, with three
+escape hatches, each a recorded fact rather than a projection: he held a real
+share last season, somebody is drafting him, or it is his own page.
+
+**The share hatch needs a games floor too.** Jakobie Keeney-James read a 20%
+target share off **one appearance**, Samori Toure 9% off one. That is not a small
+sample of a job (which `calibrate:shrinkage` says is fine — k=0, a four-game
+share predicts next season at r=0.919); it is a man who played a game. Four
+games, the shortest span that work found informative.
+
+### #103 — every arrow on the depth chart was firing on an artefact
+
+The user's report was "some players are gaining and some losing without any real
+reason". Three distinct faults, each producing a confident arrow with nothing
+behind it:
+
+1. **Two ranks over two different populations.** The rising test was
+   `depthRank > usageRank` — but `depthRank` counts every man in the room while
+   `usageRank` counts only those with any usage at all. In a fifteen-man camp
+   room with three role-holders, the third reads depth 14 against usage rank 3
+   and came out **rising, "out-produced the men listed above him"** — the men he
+   out-produced having no usage whatsoever. Ricky Pearsall carried exactly that.
+   Family #3 and #5.
+2. **Shares compared across teams.** `volumeShare` is the share of the team he
+   played for last season, which #42 already established can be a different
+   roster. **Brian Thomas Jr, Jacksonville's WR1, read losing ground because
+   Jakobi Meyers arrived holding a bigger share of the RAIDERS' targets.**
+3. **"Directly above" meant any.** `above.find(fragile)` returns the first match
+   in listing order, so a third-stringer rose because the STARTER was fragile,
+   skipping the man actually in front of him. Same shape as #37 and #7.
+
+Plus two labelling faults on top: the reason said **"produced more per game"**
+about a target SHARE (family #7), and a man could slip on his own availability
+without holding a job — **Brady Cook, the third quarterback, at "5.0 games a
+year"**. True number, false claim. **Jaxson Dart, a starter at 81% of the snaps,
+read losing ground because a career backup carried a larger conditional share.**
+
+**Only two things move an arrow now, and both are facts about this room**: the
+listing disagrees with what men on this same roster actually did, or the man
+directly in front is the fragile one. A player who arrived from elsewhere is
+stated as an arrival and holds — he may well take the job, but his old share is
+evidence about his old team, and the honest surface for "we cannot tell" is to
+say so rather than pick an arrow. Slipping counts fell **57 → 26**, and what
+survives reads like football: Stevenson losing New England's RB1 listing to
+Henderson (each naming the other), Kittle at 33, Nabers off four games.
+
+**`hasRole` also had bug #40 in it.** A share is computed over the weeks a man
+APPEARED (bug #2), so it says nothing about how often he appears — Aidan
+O'Connell took 78% of the pass snaps in the one game he played, read as holding
+a role, then as LOSING it because his games were low. A healthy backup wearing
+the shape of an injured starter, one file over from where #40 was fixed.
+
+**Five audit checks, and one of them is the lesson.** The first four —
+cross-team shares, arrivals with arrows, backups slipping, camp-roster room
+sizes — all PASSED when the rank-mismatch bug was injected back in, because that
+artefact names no team, names no player and contradicts nothing. A check that
+does not fire on the bug it was written for is worse than no check, since the
+passing line reads as coverage (#95's lesson again). The one that catches it is
+the general invariant: **an arrow must name a man in this room or quote a number
+about himself** — the same standard as `every "measured" point quotes the number
+behind it`. All five negative-tested by reverting each fix in turn.
+
 ## Where things stand right now (end of the last session)
+- Board: **185 rows** after an ADP re-pull (was 179).
+- Depth-chart rooms are cut to the men who can hold or take a role — **QB 3-4 ·
+  RB 4-7 · WR 6-8 · TE 2-4**, down from 10-15 (#102), and every direction arrow
+  names a man in the room or quotes a number (#103).
 - Board: **WR 30 · RB 23 · TE 5 · QB 2** in the top 60, first QB at 23 (was 25
   before #84 — the availability fix lifted the injured quarterbacks).
 - 511 players carry a comparables outlook (162 drafted, 349 not); 253 on the
-  wire, 194 clearing the evidence floor.
+  wire, 194 clearing the evidence floor. **All 511 now get a range** — the 41
+  with no close analogue get it with the midpoint marked rough (#97).
 - Every board row carries a **case**: one verdict, the argument for and against, each point stamped `measured` / `weak` / `fact` / `unknown`.
-- `npm run audit` is green at **90 checks** — and the exit code now actually
-  covers all of them (#95).
+- `npm run audit` runs **103 checks**: 102 pass, 1 warning — and the exit code now
+  actually covers all of them (#95). The warning is market coverage: the ADP
+  re-pull added six board players the 10-day-old prop feed has never priced, so
+  only 39% of WR/RB carry a full market read. It clears when the props are
+  refreshed.
+  (Count it with `grep -cE '^  (PASS|WARN|FAIL)'` — an unanchored grep for
+  PASS overcounts, which is how an earlier note here said 90.)
+- **`npm run check:freshness`** reports the age of every source and the command
+  that refreshes it. Rosters, depth charts and ADP are current; **props are 10
+  days old and cost credits to refresh**, so that call is deliberately the
+  user's.
 - **A Yahoo league can be connected**: `npm run yahoo:auth` then
   `npm run ingest:yahoo`. The wire then filters on real rosters instead of
   national ADP and says which source answered; `/league` prints every roster.
@@ -1748,8 +2018,10 @@ the next schema operation will quietly delete it.
 
 ### Known limitations, accepted
 
-- Rotation depth (RB≤2, WR≤3, TE≤1) is judgment from base personnel, not
-  backtested. A flat ≤2 returned zero receivers while 22 backup TEs passed.
+- Rotation depth for the OPPORTUNITY maths (RB≤2, WR≤3, TE≤1) is still judgment
+  from base personnel, not backtested. A flat ≤2 returned zero receivers while 22
+  backup TEs passed. Note this is a different number from `ROOM_DEPTH` (#102),
+  which governs who is DISPLAYED and is measured.
 - Tag thresholds are judgment; the claims inside them are calibrated.
 - Archetype thresholds are hard boundaries — Gibbs reads "committee back" at
   0.548 against a 0.55 cutoff.

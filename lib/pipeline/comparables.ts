@@ -84,9 +84,26 @@ export interface Comparable {
 export type Support = 'strong' | 'fair' | 'thin';
 
 export interface Outlook {
-  /** The seasons the comparable pool actually spans. */
+  /**
+   * The seasons the comparable pool actually spans — the PROFILES matched on.
+   *
+   * It stops a year short of the newest season played, and always will: a
+   * season only teaches something once the following one is in the books, so
+   * the last profile is the second-newest season, not the newest.
+   */
   fromSeason: number;
   toSeason: number;
+  /**
+   * The seasons the OUTCOMES come from — every profile season plus one.
+   *
+   * Carried explicitly because the page was labelling the panel with the
+   * profile span alone ("2021–2024") while the outcomes it draws ran a year
+   * later, which reads as a tool that stopped ingesting a year ago. Derived
+   * here rather than as `toSeason + 1` at each call site: this project has
+   * already shipped one number defined twice (#71).
+   */
+  outcomeFromSeason: number;
+  outcomeToSeason: number;
   /** Count of historical seasons in the neighbourhood. */
   n: number;
   /**
@@ -95,6 +112,9 @@ export interface Outlook {
    * A hard gate, not a quality grade — `support` carries the gradient. This
    * fires only when even the closest match is remote, which is a real finding
    * about a player rather than a gap in the data.
+   *
+   * IT NO LONGER SUPPRESSES THE RANGE — see the branch in `lookup` for the
+   * measurement. It still suppresses the RATES and the ranked percentiles.
    */
   sparse: boolean;
   support: Support;
@@ -519,26 +539,42 @@ export class ComparableIndex {
         distance: s.d,
       }));
 
-    if (nearestDistance > bands.noAnalogue) {
-      return {
-        n: scored.length,
-        fromSeason: this.span.from,
-        toSeason: this.span.to,
-        sparse: true,
-        support: 'thin',
-        closeShare,
-        nearestDistance,
-        bands,
-        // Zeroes rather than NaN: JSON.stringify turns NaN into null, so the
-        // consumer parsed nulls back out and called .toFixed on them. The
-        // `sparse` flag is what gates display; these are never read.
-        floor: 0, median: 0, ceiling: 0,
-        floorPpg: 0, medianPpg: 0, ceilingPpg: 0,
-        hitRate: 0, breakoutRate: 0, bustRate: 0, vanishRate: 0, medianNextGames: 0,
-        nearest: nearest(5),
-      };
-    }
-
+    /*
+     * No analogue: a real finding about him, and NOT a reason to withhold the
+     * range. Measured, not assumed.
+     *
+     * This branch used to return zeroes for the floor, median and ceiling, so
+     * the ~8% of players with no close precedent got a comparison list and no
+     * chart while everyone else got both. That put four of the twelve most
+     * expensive players on the board — Nacua, Smith-Njigba, McCaffrey, Rice —
+     * on a different panel from the rest, which reads as a missing feature
+     * rather than as the finding it is.
+     *
+     * `calibrate:comparables` now tests the gate against the standard the
+     * project already applies to the other quality axis. Replicating the
+     * shipped band exactly and bucketing every backtest season either side of
+     * it, interval coverage against a 0.60 target:
+     *
+     *   pos    shown   SUPPRESSED     MAE shown -> suppressed     n
+     *   QB      0.58      0.83            86.5 -> 51.7            8
+     *   RB      0.60      0.46            43.3 -> 79.8           15
+     *   WR      0.62      0.89            33.8 -> 39.5           33
+     *   TE      0.57      0.65            25.0 -> 32.9           18
+     *
+     * The same shape the closeShare buckets found: A THIN NEIGHBOURHOOD BREAKS
+     * THE MIDPOINT, NOT THE RANGE. The error on the median roughly doubles at
+     * RB and worsens at WR and TE, while coverage holds or runs WIDE — 0.89 at
+     * receiver, the biggest suppressed group and the position 11 of 13 picks
+     * come from. A band that covers 89% of outcomes is vague, not misleading,
+     * and vague-but-drawn beats absent. RB is the one dissent at 0.46 on 15
+     * seasons; the group totals 74 seasons, so this is directional evidence and
+     * the copy on the page says which half of it to trust.
+     *
+     * So the range is computed for everyone below, and `sparse` keeps doing the
+     * two jobs it has earned: it drives the warning on the panel, and it still
+     * suppresses the RATES and the ranked percentiles, which this measurement
+     * does not cover and #93 was about.
+     */
     const repl = this.replacement.get(position) ?? 0;
     const top = this.top12.get(position) ?? Infinity;
 
@@ -582,12 +618,55 @@ export class ComparableIndex {
 
     const nextGames = survivors.map((s) => s.r.nextGames).sort((a, b) => a - b);
 
+    /*
+     * The rates, and only the rates, are still withheld with no analogue.
+     *
+     * The measurement above covers the BAND — where the outcome landed — and
+     * the midpoint. It says nothing about whether "31% of them busted" is
+     * trustworthy when none of the forty resembles him, so that claim is not
+     * made. Zeroes rather than nulls because JSON.stringify turns NaN into
+     * null and the consumers then called .toFixed on it; `sparse` is what gates
+     * them, the page renders an em dash, and the audit check
+     * `a sparse outlook is never ranked` enforces that the percentiles stay
+     * null. That check exists because the previous version of this contract was
+     * a comment saying "these are never read", which expired silently (#93).
+     */
+    const noAnalogue = nearestDistance > bands.noAnalogue;
+    const rates = noAnalogue
+      ? { hitRate: 0, breakoutRate: 0, bustRate: 0, vanishRate: 0 }
+      : {
+          hitRate: rate((s) => s.r.nextPoints > repl),
+          breakoutRate: rate((s) => s.r.nextPoints >= top),
+          /*
+           * The bust bar is REPLACEMENT, not half of it.
+           *
+           * Half of replacement landed at a wildly different depth per position
+           * — about QB27, RB54, TE35 and WR90 — so a receiver had to fall out of
+           * the league to "bust" while a quarterback only had to be a backup.
+           * Median raw bust rate ran 5% for receivers against 20% for backs, and
+           * that gap was the bar rather than the risk. At replacement itself the
+           * event means the same thing everywhere: he was worth less than the
+           * man you could have had for nothing.
+           *
+           * NOTE WHAT THIS MAKES IT. `hitRate` is `> repl`, so `bustRate` is now
+           * its exact complement — the two sum to one, and they are one
+           * measurement with two names, not two pieces of evidence. Written as
+           * `<=` rather than `<` so that is exactly true rather than nearly
+           * true, and an audit check enforces the sum. Anything reading both
+           * must not treat them as independent confirmation.
+           */
+          bustRate: rate((s) => s.r.nextPoints <= repl),
+          vanishRate: rate((s) => !s.r.nextPlayed),
+        };
+
     return {
       n: scored.length,
       fromSeason: this.span.from,
       toSeason: this.span.to,
-      sparse: false,
-      support,
+      outcomeFromSeason: this.span.from + 1,
+      outcomeToSeason: this.span.to + 1,
+      sparse: noAnalogue,
+      support: noAnalogue ? 'thin' : support,
       closeShare,
       nearestDistance,
       bands,
@@ -595,28 +674,7 @@ export class ComparableIndex {
       floorPpg: perGame.floor,
       medianPpg: perGame.median,
       ceilingPpg: perGame.ceiling,
-      hitRate: rate((s) => s.r.nextPoints > repl),
-      breakoutRate: rate((s) => s.r.nextPoints >= top),
-      /*
-       * The bust bar is REPLACEMENT, not half of it.
-       *
-       * Half of replacement landed at a wildly different depth per position —
-       * about QB27, RB54, TE35 and WR90 — so a receiver had to fall out of the
-       * league to "bust" while a quarterback only had to be a backup. Median raw
-       * bust rate ran 5% for receivers against 20% for backs, and that gap was
-       * the bar rather than the risk. At replacement itself the event means the
-       * same thing everywhere: he was worth less than the man you could have had
-       * for nothing.
-       *
-       * NOTE WHAT THIS MAKES IT. `hitRate` is `> repl`, so `bustRate` is now its
-       * exact complement — the two sum to one, and they are one measurement with
-       * two names, not two pieces of evidence. Written as `<=` rather than `<`
-       * so that is exactly true rather than nearly true, and an audit check
-       * enforces the sum. Anything reading both must not treat them as
-       * independent confirmation.
-       */
-      bustRate: rate((s) => s.r.nextPoints <= repl),
-      vanishRate: rate((s) => !s.r.nextPlayed),
+      ...rates,
       medianNextGames: nextGames.length ? nextGames[Math.floor(nextGames.length / 2)]! : 0,
       nearest: nearest(6),
     };

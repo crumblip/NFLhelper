@@ -1210,6 +1210,22 @@ table.mini tr.rule td { border-top: 1px solid var(--border); padding-top: 9px; }
   letter-spacing: 0.07em; text-transform: uppercase; color: var(--faint);
 }
 
+/* A midpoint the backtest says not to lean on. Measured twice on two different
+   readings of neighbourhood quality: a loose neighbourhood roughly doubles the
+   error on the median while the floor-to-ceiling spread keeps working, so the
+   honest picture keeps the range solid and drops the confidence of the one mark
+   that earned it. Dashed as well as faded — the ~8% of men with a red/green
+   deficiency get shape, the same reason the verdict numbers are pills. */
+.outlook-marker.mid.unreliable i {
+  background: repeating-linear-gradient(
+    to bottom,
+    var(--faint) 0 4px,
+    transparent 4px 7px
+  );
+  box-shadow: none;
+}
+.outlook-marker.mid.unreliable span { color: var(--faint); font-weight: 650; }
+
 /* Reference marks — what HE did, and what a free agent does. Without these the
    range is three numbers with nothing to be measured against. */
 .outlook-ref { position: absolute; top: 50%; transform: translate(-50%, -50%); }
@@ -1409,6 +1425,14 @@ details.prov > div { margin-top: var(--s3); }
   border-bottom: none;
 }
 .weekly-bar:hover { filter: brightness(1.25); }
+/* The bars carry the per-week number on a tooltip, so they are focusable — a
+   chart readable only by mouse is half a chart. The outline sits outside the bar
+   because a 4px-wide bar has no room for an inset ring. */
+.weekly-bar:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  filter: brightness(1.25);
+}
 
 /* The startable line, drawn across the bars rather than described in a caption. */
 .weekly-line {

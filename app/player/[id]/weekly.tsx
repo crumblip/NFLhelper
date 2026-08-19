@@ -1,3 +1,5 @@
+import { Tip } from '../../ui/tip';
+
 /**
  * Week by week, against the bar that matters.
  *
@@ -15,6 +17,13 @@
  * The threshold is replacement level divided by a season, so it is the same
  * calibrated number the rest of the tool ranks on rather than a round figure
  * chosen to look tidy.
+ *
+ * The per-week readout is a real tooltip and not a `title` attribute. A bar here
+ * is about ten pixels wide, so the number behind it is reachable ONLY by hover —
+ * and the native attribute waits about a second, cannot be styled, and never
+ * appears on a touch device at all, which is the whole reason this project
+ * banned it. Each bar is also focusable, so the chart can be read from the
+ * keyboard rather than being mouse-only.
  */
 export default function WeeklyBars({
   weeks,
@@ -54,14 +63,24 @@ export default function WeeklyBars({
           aria-hidden
         />
         {weeks.map((w) => (
-          <span
+          <Tip
             key={w.week}
-            className="weekly-bar"
-            data-cleared={w.points !== null && w.points >= threshold}
-            data-missed={w.points === null}
-            style={{ height: w.points === null ? '10px' : `${Math.max(3, (w.points / max) * 100)}%` }}
-            title={w.points === null ? `Week ${w.week}: did not play` : `Week ${w.week}: ${w.points.toFixed(1)} pts`}
-          />
+            content={
+              w.points === null
+                ? `Week ${w.week} — did not play`
+                : `Week ${w.week} — ${w.points.toFixed(1)} points, ${
+                    w.points >= threshold ? 'above' : 'below'
+                  } the ${threshold.toFixed(0)}-point line`
+            }
+          >
+            <span
+              className="weekly-bar"
+              tabIndex={0}
+              data-cleared={w.points !== null && w.points >= threshold}
+              data-missed={w.points === null}
+              style={{ height: w.points === null ? '10px' : `${Math.max(3, (w.points / max) * 100)}%` }}
+            />
+          </Tip>
         ))}
       </div>
 

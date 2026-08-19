@@ -43,8 +43,10 @@ export default function ThemeToggle() {
     <button
       className="icon-btn"
       onClick={flip}
+      // `aria-label` is the accessible name and is enough on its own. The
+      // `title` that used to sit beside it said the same thing a second later,
+      // unstyleable and invisible on touch — the attribute this project bans.
       aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'}
-      title={dark ? 'Light mode' : 'Dark mode'}
       // Nothing is rendered until the client knows which icon is correct, so
       // the button cannot flash the wrong one.
       suppressHydrationWarning

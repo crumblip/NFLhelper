@@ -242,9 +242,20 @@ export function buildRead(i: ReadInput): PlayerRead {
           : '.'),
     );
   } else if (i.outlook?.sparse) {
+    /*
+     * This used to say the range could not be drawn. It is drawn now — the
+     * backtest says a remote neighbourhood breaks the midpoint and leaves the
+     * spread working — so the sentence has to describe what is actually on the
+     * page a few inches below it. A written read that contradicts its own chart
+     * is the family that produced #75 and #78, and it costs the reader's trust
+     * in everything else here.
+     */
+    const o = i.outlook;
     body.push(
-      `No historical season resembles his closely enough to draw a range from, which is itself a ` +
-        `finding: the profile is unusual, and comparables cannot price him.`,
+      `No historical season resembles his closely, which is itself a finding: the profile is ` +
+        `unusual. The least-unlike roles spread between ${round(o.floor)} and ${round(o.ceiling)} ` +
+        `points, and that width is worth reading — the single middle number is not, because it ` +
+        `roughly doubles in error when the comparison is this loose.`,
     );
   }
 
