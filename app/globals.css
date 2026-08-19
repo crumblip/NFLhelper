@@ -1,0 +1,2135 @@
+/* ============================================================================
+   NFLhelper design system
+
+   Dark-first, because the tool is read in a dim room during a draft and a white
+   page at 8pm is punishing. Both themes are real, not one inverted.
+
+   The type scale, spacing and elevation are fixed sets rather than ad-hoc
+   values, so a new component cannot introduce a fourth grey or a fifth radius.
+   Team and position colour arrive as inline custom properties from lib/teams.ts
+   — 32 palettes as stylesheet rules would be unmaintainable, and the component
+   only ever reads var(--team).
+   ========================================================================= */
+
+:root {
+  color-scheme: light dark;
+
+  /* ---- spacing: 4px base ---- */
+  --s1: 4px;  --s2: 8px;  --s3: 12px; --s4: 16px;
+  --s5: 24px; --s6: 32px; --s7: 48px; --s8: 64px;
+
+  /* ---- radius ---- */
+  --r-sm: 6px; --r-md: 10px; --r-lg: 14px; --r-xl: 20px; --r-full: 999px;
+
+  /* ---- type ---- */
+  --font: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-display: 'Arial Narrow', 'Helvetica Neue', 'Roboto Condensed', var(--font);
+  --font-mono: ui-monospace, 'Cascadia Mono', 'SF Mono', Menlo, monospace;
+
+  /* ---- light theme ---- */
+  --bg: #f7f8fa;
+  --bg-grad: none;
+  --panel: #ffffff;
+  --panel-2: #fbfcfd;
+  --panel-hover: #f2f4f7;
+  --border: #e6e9ee;
+  --border-strong: #d3d8e0;
+  --text: #0d1117;
+  --text-2: #3d4552;
+  --muted: #667085;
+  --faint: #98a1b0;
+  /* The dark rail keeps its own scale in both themes — it is always dark. */
+  --rail: #12151c;
+  --rail-2: #1a1f29;
+  --rail-text: #e8ebf1;
+  --rail-muted: #7b8497;
+  --rail-active: #ffffff;
+
+  --value: #0f7a5a;
+  --value-bg: #e4f5ee;
+  --value-br: #9fdcc6;
+  --reach: #c0402a;
+  --reach-bg: #fdeae5;
+  --reach-br: #f3bcae;
+  --accent: #2456c9;
+  --accent-bg: #e8eefc;
+  --accent-br: #b6c9f2;
+  --warn: #96650a;
+  --warn-bg: #fcf2dd;
+  --warn-br: #e8d19a;
+
+  --shadow-1: 0 1px 2px rgb(16 19 26 / 6%), 0 1px 1px rgb(16 19 26 / 4%);
+  --shadow-2: 0 2px 4px rgb(16 19 26 / 6%), 0 4px 12px rgb(16 19 26 / 8%);
+  --shadow-3: 0 8px 20px rgb(16 19 26 / 12%), 0 2px 6px rgb(16 19 26 / 8%);
+  --shadow-4: 0 20px 48px rgb(16 19 26 / 22%), 0 4px 12px rgb(16 19 26 / 12%);
+
+  --ring: 0 0 0 3px color-mix(in srgb, var(--accent) 26%, transparent);
+}
+
+/* ----------------------------------------------------------------------------
+   Dark theme, reachable two ways.
+
+   The OS preference applies unless the reader has explicitly chosen light, and
+   an explicit dark choice wins over an OS preference for light. Written as two
+   blocks with the same body rather than one, because CSS has no way to share a
+   declaration list and a nested :is() would not cover the media case.
+   ------------------------------------------------------------------------- */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --bg: #0b0d11;
+    --bg-grad: radial-gradient(1200px 600px at 20% -10%, #171b23 0%, #0b0d11 60%);
+    --panel: #14171e;
+    --panel-2: #171b23;
+    --panel-hover: #1c212a;
+    --border: #262c38;
+    --border-strong: #38404f;
+    --text: #edeff3;
+    --text-2: #c2c7d2;
+    --muted: #8b93a3;
+    --faint: #636b7b;
+
+    --value: #3fd39e;
+    --value-bg: #0e2d24;
+    --value-br: #1d5c48;
+    --reach: #ff7a5c;
+    --reach-bg: #331610;
+    --reach-br: #6b3021;
+    --accent: #7aa2ff;
+    --accent-bg: #17203a;
+    --accent-br: #2e4680;
+    --warn: #e8b45c;
+    --warn-bg: #322510;
+    --warn-br: #6b5222;
+
+    --shadow-1: 0 1px 2px rgb(0 0 0 / 40%);
+    --shadow-2: 0 2px 6px rgb(0 0 0 / 45%), 0 8px 20px rgb(0 0 0 / 30%);
+    --shadow-3: 0 10px 28px rgb(0 0 0 / 50%), 0 2px 8px rgb(0 0 0 / 40%);
+    --shadow-4: 0 24px 60px rgb(0 0 0 / 62%), 0 6px 16px rgb(0 0 0 / 45%);
+    --rail: #0a0c11;
+    --rail-2: #12151c;
+    --rail-text: #e8ebf1;
+    --rail-muted: #6f7889;
+    --rail-active: #ffffff;
+  }
+}
+:root[data-theme='dark'] {
+    --bg: #0b0d11;
+    --bg-grad: radial-gradient(1200px 600px at 20% -10%, #171b23 0%, #0b0d11 60%);
+    --panel: #14171e;
+    --panel-2: #171b23;
+    --panel-hover: #1c212a;
+    --border: #262c38;
+    --border-strong: #38404f;
+    --text: #edeff3;
+    --text-2: #c2c7d2;
+    --muted: #8b93a3;
+    --faint: #636b7b;
+
+    --value: #3fd39e;
+    --value-bg: #0e2d24;
+    --value-br: #1d5c48;
+    --reach: #ff7a5c;
+    --reach-bg: #331610;
+    --reach-br: #6b3021;
+    --accent: #7aa2ff;
+    --accent-bg: #17203a;
+    --accent-br: #2e4680;
+    --warn: #e8b45c;
+    --warn-bg: #322510;
+    --warn-br: #6b5222;
+
+    --shadow-1: 0 1px 2px rgb(0 0 0 / 40%);
+    --shadow-2: 0 2px 6px rgb(0 0 0 / 45%), 0 8px 20px rgb(0 0 0 / 30%);
+    --shadow-3: 0 10px 28px rgb(0 0 0 / 50%), 0 2px 8px rgb(0 0 0 / 40%);
+    --shadow-4: 0 24px 60px rgb(0 0 0 / 62%), 0 6px 16px rgb(0 0 0 / 45%);
+    --rail: #0a0c11;
+    --rail-2: #12151c;
+    --rail-text: #e8ebf1;
+    --rail-muted: #6f7889;
+    --rail-active: #ffffff;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--bg);
+  background-image: var(--bg-grad);
+  background-attachment: fixed;
+  color: var(--text);
+  font: 15px/1.55 var(--font);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection { background: color-mix(in srgb, var(--accent) 30%, transparent); }
+
+:focus-visible { outline: none; box-shadow: var(--ring); border-radius: var(--r-sm); }
+
+/* ============================================================================
+   App shell — a fixed icon rail, a slim topbar, and the content between them.
+
+   The rail is always dark, in both themes. It is chrome rather than content, so
+   holding it constant gives the eye a stable left edge to come back to while
+   everything beside it inverts. It is also the only always-visible navigation,
+   which matters during a live draft where a misclick costs a pick.
+   ========================================================================= */
+
+.shell {
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr);
+  min-height: 100vh;
+}
+
+.shell-main { min-width: 0; display: flex; flex-direction: column; }
+.shell-content { flex: 1; min-width: 0; }
+
+/* ---- the rail ---- */
+
+.rail {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  background: var(--rail);
+  border-right: 1px solid color-mix(in srgb, #fff 7%, transparent);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--s3) 0 var(--s4);
+  gap: var(--s2);
+  z-index: 60;
+}
+
+.rail-brand { display: block; margin-bottom: var(--s4); text-decoration: none; }
+.rail-mark {
+  width: 40px; height: 40px;
+  display: grid; place-items: center;
+  border-radius: 13px;
+  background: linear-gradient(150deg, var(--accent), color-mix(in srgb, var(--accent) 45%, #06070a));
+  color: #fff;
+  font-family: var(--font-display);
+  font-size: 19px; font-weight: 800; letter-spacing: 0.02em;
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--accent) 38%, transparent);
+  transition: transform 140ms cubic-bezier(.2,.7,.3,1);
+}
+.rail-brand:hover .rail-mark { transform: translateY(-1px) scale(1.03); }
+
+.rail-nav { display: flex; flex-direction: column; gap: 2px; width: 100%; align-items: center; }
+
+.rail-item {
+  width: 60px;
+  padding: 9px 0 7px;
+  border-radius: var(--r-md);
+  display: flex; flex-direction: column; align-items: center; gap: 5px;
+  color: var(--rail-muted);
+  text-decoration: none;
+  transition: background 130ms ease, color 130ms ease;
+  position: relative;
+}
+.rail-item:hover { background: var(--rail-2); color: var(--rail-text); }
+.rail-item[data-active='true'] { color: var(--rail-active); background: var(--rail-2); }
+/* The active marker is a bar on the rail edge, not a fill — it reads as
+   "you are here" without competing with the accent used for values. */
+.rail-item[data-active='true']::before {
+  content: '';
+  position: absolute; left: -8px; top: 50%; translate: 0 -50%;
+  width: 3px; height: 22px; border-radius: 0 3px 3px 0;
+  background: var(--accent);
+}
+.rail-icon { width: 21px; height: 21px; display: block; }
+.rail-icon svg { width: 100%; height: 100%; display: block; }
+.rail-label { font-size: 10.5px; font-weight: 600; letter-spacing: 0.01em; }
+
+/* ---- topbar ---- */
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: color-mix(in srgb, var(--bg) 78%, transparent);
+  backdrop-filter: saturate(1.4) blur(14px);
+  -webkit-backdrop-filter: saturate(1.4) blur(14px);
+  border-bottom: 1px solid var(--border);
+}
+
+.topbar-inner {
+  padding: 0 var(--s6);
+  height: 64px;
+  display: flex;
+  align-items: center;
+  gap: var(--s4);
+}
+
+.icon-btn {
+  width: 36px; height: 36px;
+  display: grid; place-items: center;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--muted);
+  border-radius: var(--r-md);
+  cursor: pointer;
+  transition: color 130ms ease, border-color 130ms ease, background 130ms ease, transform 130ms ease;
+}
+.icon-btn:hover {
+  color: var(--text);
+  border-color: var(--border-strong);
+  background: var(--panel-hover);
+  transform: translateY(-1px);
+}
+
+.wrap { max-width: 1520px; margin: 0 auto; padding: var(--s6) var(--s6) var(--s8); }
+.wrap.narrow { max-width: 900px; }
+
+/* ============================================================================
+   Typography
+   ========================================================================= */
+
+h1 {
+  font-size: 27px;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  margin: 0 0 var(--s1);
+  line-height: 1.15;
+}
+h2 {
+  font-size: 15px;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: var(--s6) 0 var(--s3);
+}
+h3 { font-size: 15px; font-weight: 650; margin: 0 0 var(--s2); letter-spacing: -0.01em; }
+
+.sub { color: var(--muted); font-size: 13px; margin: 0 0 var(--s5); }
+.sub strong { color: var(--text-2); font-weight: 600; }
+.muted { color: var(--muted); }
+.faint { color: var(--faint); }
+
+.crumb { font-size: 13px; margin: 0 0 var(--s4); color: var(--muted); display: flex; gap: var(--s3); flex-wrap: wrap; }
+.crumb a { color: var(--accent); text-decoration: none; font-weight: 500; }
+.crumb a:hover { text-decoration: underline; }
+
+.body { font-size: 14.5px; line-height: 1.7; color: var(--text-2); margin: 0 0 var(--s3); max-width: 74ch; }
+.body:last-child { margin-bottom: 0; }
+
+.legend { margin-top: var(--s4); font-size: 12.5px; color: var(--muted); line-height: 1.75; max-width: 96ch; }
+.legend code {
+  background: var(--panel-2); border: 1px solid var(--border);
+  border-radius: 4px; padding: 1px 5px; font-family: var(--font-mono); font-size: 11.5px;
+}
+.legend a { color: var(--accent); }
+
+/* ============================================================================
+   Notice / callout
+   ========================================================================= */
+
+.notice {
+  position: relative;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: var(--s3) var(--s4) var(--s3) var(--s5);
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--muted);
+  margin-bottom: var(--s5);
+  box-shadow: var(--shadow-1);
+  overflow: hidden;
+}
+.notice::before {
+  content: ''; position: absolute; inset: 0 auto 0 0; width: 3px;
+  background: linear-gradient(180deg, var(--warn), color-mix(in srgb, var(--warn) 40%, transparent));
+}
+.notice strong { color: var(--text); font-weight: 650; }
+
+/* ============================================================================
+   Controls
+   ========================================================================= */
+
+.controls {
+  display: flex; gap: var(--s2); flex-wrap: wrap; align-items: center;
+  margin-bottom: var(--s4);
+}
+.spacer { flex: 1; }
+
+.chip {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  border-radius: var(--r-full);
+  padding: 6px 14px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 550;
+  cursor: pointer;
+  transition: all 130ms ease;
+  white-space: nowrap;
+  box-shadow: var(--shadow-1);
+}
+.chip:hover { border-color: var(--border-strong); color: var(--text); transform: translateY(-1px); }
+.chip:active { transform: translateY(0); }
+.chip[data-on='true'] {
+  background: var(--accent); border-color: var(--accent); color: #fff;
+  box-shadow: var(--shadow-2);
+}
+/* Position filters carry their own colour so the set reads as a legend too. */
+.chip[data-pos][data-on='true'] {
+  background: var(--pos-color); border-color: var(--pos-color); color: #fff;
+}
+.chip[data-pos] { border-left: 3px solid var(--pos-color); }
+
+.seg {
+  display: inline-flex; padding: 3px; gap: 2px;
+  background: var(--panel-2); border: 1px solid var(--border);
+  border-radius: var(--r-full); box-shadow: var(--shadow-1);
+}
+.seg button {
+  border: none; background: transparent; color: var(--muted);
+  font: inherit; font-size: 12.5px; font-weight: 550;
+  padding: 5px 13px; border-radius: var(--r-full); cursor: pointer;
+  transition: all 120ms ease; white-space: nowrap;
+}
+.seg button:hover { color: var(--text); }
+.seg button[data-on='true'] { background: var(--panel); color: var(--text); box-shadow: var(--shadow-1); }
+
+.search {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: var(--r-full);
+  padding: 7px 15px;
+  font: inherit; font-size: 13px;
+  min-width: 210px;
+  box-shadow: var(--shadow-1);
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+.search:focus { outline: none; border-color: var(--accent); box-shadow: var(--ring); }
+.search::placeholder { color: var(--faint); }
+
+/* ============================================================================
+   Badges
+   ========================================================================= */
+
+.pos-badge {
+  display: inline-grid; place-items: center;
+  min-width: 30px; height: 20px; padding: 0 6px;
+  font-size: 10.5px; font-weight: 750; letter-spacing: 0.06em;
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--pos-color) 16%, transparent);
+  color: var(--pos-color);
+  border: 1px solid color-mix(in srgb, var(--pos-color) 34%, transparent);
+}
+
+.team-badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 11.5px; font-weight: 650; letter-spacing: 0.04em;
+  color: var(--muted);
+}
+.team-dot {
+  width: 8px; height: 8px; border-radius: 2px;
+  background: linear-gradient(135deg, var(--team-bright) 50%, var(--team-2) 50%);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--team-bright) 40%, transparent);
+  flex: none;
+}
+
+.avail {
+  display: inline-block; font-size: 10px; font-weight: 700;
+  letter-spacing: 0.07em; text-transform: uppercase;
+  padding: 2px 7px; border-radius: var(--r-full); border: 1px solid transparent;
+}
+.avail.board { background: var(--accent-bg); color: var(--accent); border-color: var(--accent-br); }
+.avail.wire { background: var(--value-bg); color: var(--value); border-color: var(--value-br); }
+.avail.roster { background: color-mix(in srgb, var(--muted) 13%, transparent); color: var(--muted); border-color: var(--border); }
+
+/* ============================================================================
+   Value pill
+   ========================================================================= */
+
+.gap {
+  font-weight: 650;
+  border-radius: var(--r-sm);
+  padding: 3px 8px;
+  display: inline-block;
+  min-width: 54px;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  border: 1px solid transparent;
+}
+.gap.value { font-size: 15px; font-weight: 750; min-width: 48px; letter-spacing: -0.015em; }
+.gap.pos { color: var(--value); background: var(--value-bg); border-color: var(--value-br); }
+.gap.neg { color: var(--reach); background: var(--reach-bg); border-color: var(--reach-br); }
+.gap.na { color: var(--faint); background: transparent; font-weight: 400; border: none; }
+.gap.big {
+  font-size: 26px; padding: 10px 18px; min-width: 104px; text-align: center;
+  border-radius: var(--r-md); letter-spacing: -0.03em;
+}
+
+/* ============================================================================
+   Cards
+   ========================================================================= */
+
+.card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: var(--s5);
+  box-shadow: var(--shadow-2);
+}
+.card + .card { margin-top: var(--s3); }
+
+.headline { display: flex; align-items: center; gap: var(--s4); margin-bottom: var(--s4); flex-wrap: wrap; }
+
+.grid { display: grid; gap: var(--s3); }
+.grid.c2 { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+.grid.c3 { grid-template-columns: repeat(auto-fit, minmax(252px, 1fr)); }
+.grid.c4 { grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
+.grid.c5 { grid-template-columns: repeat(auto-fit, minmax(155px, 1fr)); }
+
+/* ---- stat tile ---- */
+.stat {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: var(--s3) var(--s4);
+  box-shadow: var(--shadow-1);
+  transition: transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease;
+}
+.stat:hover { transform: translateY(-2px); box-shadow: var(--shadow-2); border-color: var(--border-strong); }
+.stat-label {
+  font-size: 10.5px; font-weight: 650; letter-spacing: 0.07em;
+  text-transform: uppercase; color: var(--faint); margin-bottom: 3px;
+}
+.stat-value {
+  font-size: 23px; font-weight: 700; letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums; line-height: 1.15;
+}
+.stat-note { font-size: 11.5px; color: var(--muted); margin-top: 2px; line-height: 1.45; }
+
+/* ---- meter ---- */
+.meter { height: 5px; border-radius: var(--r-full); background: color-mix(in srgb, var(--muted) 16%, transparent); overflow: hidden; margin-top: 7px; }
+.meter > i { display: block; height: 100%; border-radius: var(--r-full); background: var(--accent); transition: width 400ms cubic-bezier(.2,.8,.2,1); }
+.meter.pos > i { background: linear-gradient(90deg, var(--value), color-mix(in srgb, var(--value) 60%, #fff)); }
+.meter.team > i { background: linear-gradient(90deg, var(--team-bright), var(--team-2)); }
+
+/* ============================================================================
+   Table
+   ========================================================================= */
+
+.tablewrap {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--panel);
+  box-shadow: var(--shadow-2);
+}
+
+table {
+  border-collapse: separate; border-spacing: 0; width: 100%;
+  font-variant-numeric: tabular-nums;
+}
+
+th, td {
+  padding: 10px 10px;
+  text-align: right;
+  white-space: nowrap;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
+  vertical-align: middle;
+}
+tbody tr:last-child td { border-bottom: none; }
+th:first-child, td:first-child { padding-left: var(--s4); }
+th:last-child, td:last-child { padding-right: var(--s4); }
+th.l, td.l { text-align: left; }
+
+th {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--faint);
+  font-weight: 700;
+  user-select: none;
+  /*
+   * `top` must stay 0. `.tablewrap` sets overflow-x, which forces overflow-y to
+   * auto and makes the wrapper a scroll container — so this offset resolves
+   * against the wrapper, not the viewport. A 58px offset meant to clear the
+   * topbar instead pushed the header 58px down inside the table, straight over
+   * the first row. The board is 72px wider than the viewport at 1280px, so the
+   * horizontal scroll cannot simply be dropped to get viewport-relative sticky.
+   */
+  position: sticky; top: 0; z-index: 2;
+  background: var(--panel-2);
+  border-bottom: 1px solid var(--border);
+  padding-top: 12px; padding-bottom: 10px;
+}
+th[data-sortable='true'] { cursor: pointer; transition: color 110ms ease; }
+th[data-sortable='true']:hover { color: var(--text); }
+th[data-sorted='true'] { color: var(--accent); }
+
+tbody tr { transition: background 110ms ease; }
+tbody tr:nth-child(even) { background: color-mix(in srgb, var(--muted) 3.5%, transparent); }
+tbody tr:hover { background: color-mix(in srgb, var(--accent) 8%, transparent); }
+
+/* The team stripe turns a wall of rows into something scannable by club. */
+td.stripe {
+  position: relative;
+  border-left: 3px solid var(--team-bright);
+}
+
+.name {
+  color: var(--text); text-decoration: none; font-weight: 560;
+  letter-spacing: -0.01em;
+}
+.name:hover { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
+
+.rank { color: var(--faint); font-size: 11px; font-variant-numeric: tabular-nums; }
+.tier { font-size: 11px; color: var(--muted); }
+.flag { font-size: 10.5px; color: var(--warn); margin-left: 5px; white-space: nowrap; }
+
+table.mini { width: auto; }
+table.mini td { padding: 5px 0; border: none; text-align: left; }
+table.mini td:nth-child(2) { text-align: right; padding: 5px 18px 5px 24px; font-weight: 650; }
+table.mini tr.rule td { border-top: 1px solid var(--border); padding-top: 9px; }
+
+.caveat { font-size: 12px; color: var(--muted); margin: var(--s3) 0 0; line-height: 1.65; }
+.caveat.warn { color: var(--warn); }
+
+/* ============================================================================
+   Tags
+   ========================================================================= */
+
+.readcell { max-width: 380px; min-width: 250px; white-space: normal; line-height: 1.35; }
+
+.tag {
+  display: inline-block;
+  font: inherit; font-size: 11px; font-weight: 550;
+  line-height: 1.5;
+  padding: 2px 9px;
+  margin: 2px 4px 2px 0;
+  border-radius: var(--r-full);
+  border: 1px solid transparent;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: transform 110ms ease, filter 110ms ease;
+}
+.tag:hover { transform: translateY(-1px); filter: brightness(1.08); }
+.tag.on { box-shadow: 0 0 0 2px var(--accent); }
+
+.tag.k-price { background: var(--accent-bg); color: var(--accent); border-color: var(--accent-br); font-weight: 650; }
+.tag.k-role { background: color-mix(in srgb, var(--value) 12%, transparent); color: var(--value); border-color: var(--value-br); }
+.tag.k-opportunity { background: var(--value-bg); color: var(--value); border-color: var(--value-br); font-weight: 650; }
+.tag.k-risk { background: var(--reach-bg); color: var(--reach); border-color: var(--reach-br); font-weight: 650; }
+.tag.k-coverage { background: color-mix(in srgb, var(--muted) 12%, transparent); color: var(--muted); border-color: var(--border); }
+
+/* GEM and BUST are verdicts rather than attributes, so they lead the cell. */
+.tag.verdict-gem, .tag.verdict-bust { display: block; width: fit-content; letter-spacing: 0.05em; font-weight: 750; }
+.tag.verdict-gem { background: var(--value); color: #fff; border-color: transparent; }
+.tag.verdict-bust { background: var(--reach); color: #fff; border-color: transparent; }
+
+.tagfilter {
+  background: var(--accent-bg);
+  border: 1px solid var(--accent-br);
+  border-radius: var(--r-md);
+  padding: 10px var(--s4);
+  font-size: 13px;
+  color: var(--text-2);
+  margin-bottom: var(--s3);
+  display: flex; gap: var(--s3); align-items: center; flex-wrap: wrap;
+}
+.tagfilter strong { color: var(--text); }
+
+/* ============================================================================
+   Radix tooltip + hover card
+   ========================================================================= */
+
+.tip {
+  z-index: 90;
+  max-width: 320px;
+  background: var(--panel);
+  color: var(--text-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-md);
+  padding: 9px 12px;
+  font-size: 12.5px;
+  line-height: 1.6;
+  box-shadow: var(--shadow-3);
+  animation: pop 140ms cubic-bezier(.2,.9,.3,1);
+}
+.tip strong { color: var(--text); font-weight: 650; }
+.tip-arrow { fill: var(--panel); stroke: var(--border-strong); }
+
+.hovercard {
+  z-index: 90;
+  width: 330px;
+  background: var(--panel);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-4);
+  overflow: hidden;
+  animation: pop 150ms cubic-bezier(.2,.9,.3,1);
+}
+.hovercard-head {
+  padding: var(--s3) var(--s4);
+  background: linear-gradient(135deg,
+    color-mix(in srgb, var(--team) 88%, #000) 0%,
+    color-mix(in srgb, var(--team) 55%, #000) 100%);
+  color: #fff;
+  border-bottom: 2px solid var(--team-2);
+}
+.hovercard-name { font-size: 16px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.2; }
+.hovercard-meta { font-size: 11.5px; opacity: 0.82; margin-top: 2px; letter-spacing: 0.03em; }
+.hovercard-body { padding: var(--s3) var(--s4) var(--s4); }
+.hovercard-row {
+  display: flex; justify-content: space-between; align-items: baseline;
+  gap: var(--s3); padding: 4px 0; font-size: 12.5px;
+}
+.hovercard-row + .hovercard-row { border-top: 1px solid color-mix(in srgb, var(--border) 60%, transparent); }
+.hovercard-row dt { color: var(--muted); }
+.hovercard-row dd { margin: 0; font-weight: 650; font-variant-numeric: tabular-nums; }
+
+@keyframes pop {
+  from { opacity: 0; transform: scale(0.96) translateY(-3px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* ============================================================================
+   Global search
+   ========================================================================= */
+
+.gsearch { position: relative; flex: 1; max-width: 420px; }
+.gsearch input {
+  width: 100%;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: var(--r-full);
+  padding: 7px 15px 7px 34px;
+  font: inherit; font-size: 13px;
+  transition: all 130ms ease;
+}
+.gsearch input:focus { outline: none; border-color: var(--accent); box-shadow: var(--ring); background: var(--panel); }
+.gsearch input::placeholder { color: var(--faint); }
+.gsearch-icon {
+  position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+  color: var(--faint); pointer-events: none; display: grid; place-items: center;
+}
+.gsearch-kbd {
+  position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+  font-size: 10px; font-family: var(--font-mono); color: var(--faint);
+  border: 1px solid var(--border); border-radius: 4px; padding: 1px 5px;
+  pointer-events: none; background: var(--panel);
+}
+
+.gresults {
+  position: absolute; top: calc(100% + 8px); left: 0; right: 0;
+  background: var(--panel);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-4);
+  max-height: 62vh; overflow-y: auto;
+  z-index: 80;
+  padding: var(--s1);
+  animation: pop 130ms cubic-bezier(.2,.9,.3,1);
+}
+.gresult {
+  display: flex; align-items: center; gap: var(--s3);
+  padding: 8px 10px; border-radius: var(--r-sm);
+  text-decoration: none; color: var(--text);
+  border-left: 3px solid var(--team-bright);
+  cursor: pointer;
+}
+.gresult:hover, .gresult[data-active='true'] { background: var(--panel-hover); }
+.gresult-name { font-weight: 560; font-size: 13.5px; letter-spacing: -0.01em; }
+.gresult-meta { font-size: 11px; color: var(--muted); margin-top: 1px; }
+.gresult-right { margin-left: auto; text-align: right; display: flex; align-items: center; gap: var(--s2); }
+.gempty { padding: var(--s4); text-align: center; color: var(--muted); font-size: 13px; }
+.ghint { padding: 7px 10px; font-size: 11px; color: var(--faint); border-top: 1px solid var(--border); margin-top: var(--s1); }
+
+/* ============================================================================
+   Topps-style player card
+   ========================================================================= */
+
+.cardstage { perspective: 1600px; width: 300px; flex: none; }
+
+.topps {
+  position: relative;
+  width: 300px; height: 420px;
+  transform-style: preserve-3d;
+  transition: transform 620ms cubic-bezier(.2,.8,.2,1);
+  cursor: pointer;
+  border: none; padding: 0; background: none; font: inherit; color: inherit;
+  display: block;
+}
+.topps[data-flipped='true'] { transform: rotateY(180deg); }
+.cardstage:hover .topps:not([data-flipped='true']) { transform: rotateY(-6deg) rotateX(3deg) translateY(-6px); }
+
+.topps-face {
+  position: absolute; inset: 0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  border-radius: 12px;
+  overflow: hidden;
+  /* The white stock border every Topps card has. */
+  background: #f7f5ef;
+  padding: 10px 10px 12px;
+  box-shadow: var(--shadow-4), 0 0 0 1px rgb(0 0 0 / 14%);
+}
+.topps-face.back { transform: rotateY(180deg); }
+
+/* ---- front ---- */
+
+/*
+ * Every element inside the card is a <span>, because the card is a <button> and
+ * a button may only contain phrasing content — a <div> in there is invalid HTML.
+ * Spans are inline by default and inline boxes ignore width and height, so each
+ * one that needs a box must say so. Without this the art panel collapsed from
+ * 296px to 24px, taking its background with it, and every absolutely-positioned
+ * child stacked in the top-left corner.
+ */
+.topps-art,
+.topps-team,
+.topps-name,
+.topps-sub,
+.topps-back-name,
+.topps-back-meta { display: block; }
+
+.topps-art {
+  position: relative;
+  height: 296px;
+  border-radius: 5px;
+  overflow: hidden;
+  background:
+    linear-gradient(165deg,
+      color-mix(in srgb, var(--team) 92%, #fff 8%) 0%,
+      color-mix(in srgb, var(--team) 100%, #000) 58%,
+      color-mix(in srgb, var(--team) 62%, #000) 100%);
+  border: 2px solid var(--team-2);
+}
+
+/* Halftone dots, the way the era printed a colour field. */
+.topps-art::before {
+  content: ''; position: absolute; inset: 0;
+  background-image: radial-gradient(circle at center, rgb(255 255 255 / 16%) 1px, transparent 1.4px);
+  background-size: 7px 7px;
+  opacity: 0.55;
+}
+/* Diagonal sweep, the way the era broke up that field. */
+.topps-art::after {
+  content: ''; position: absolute; inset: -20% -40%;
+  background: linear-gradient(72deg, transparent 42%, rgb(255 255 255 / 13%) 47%, rgb(255 255 255 / 13%) 53%, transparent 58%);
+}
+
+.topps-monogram {
+  position: absolute; inset: 0;
+  display: grid; place-items: center;
+  font-family: var(--font-display);
+  font-size: 148px; font-weight: 700;
+  letter-spacing: -0.06em;
+  color: rgb(255 255 255 / 15%);
+  text-shadow: 0 4px 18px rgb(0 0 0 / 28%);
+  user-select: none;
+  line-height: 1;
+}
+
+.topps-pos {
+  position: absolute; top: 10px; left: 10px;
+  font-family: var(--font-display);
+  font-size: 12px; font-weight: 700; letter-spacing: 0.12em;
+  padding: 4px 10px; border-radius: 3px;
+  background: #f7f5ef; color: var(--pos-color);
+  box-shadow: 0 2px 5px rgb(0 0 0 / 26%);
+  z-index: 2;
+}
+.topps-vorp {
+  position: absolute; top: 10px; right: 10px;
+  text-align: center; z-index: 2;
+  background: rgb(255 255 255 / 94%);
+  border-radius: 4px; padding: 4px 9px 5px;
+  box-shadow: 0 2px 5px rgb(0 0 0 / 26%);
+}
+.topps-vorp b { display: block; font-size: 19px; font-weight: 800; letter-spacing: -0.03em; line-height: 1; color: #111; }
+.topps-vorp span { display: block; font-size: 7.5px; font-weight: 700; letter-spacing: 0.13em; color: #666; margin-top: 2px; }
+
+/* The pennant every card of the era carried in a bottom corner. */
+.topps-pennant {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  padding: 26px 12px 9px;
+  background: linear-gradient(180deg, transparent, rgb(0 0 0 / 62%) 46%);
+  z-index: 2;
+}
+.topps-team {
+  font-family: var(--font-display);
+  font-size: 11px; font-weight: 700; letter-spacing: 0.19em;
+  text-transform: uppercase; color: var(--team-2);
+  text-shadow: 0 1px 3px rgb(0 0 0 / 65%);
+}
+
+.topps-plate {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: var(--s2); padding: 9px 3px 0;
+}
+.topps-name {
+  font-family: var(--font-display);
+  font-size: 21px; font-weight: 700; letter-spacing: -0.01em;
+  color: #14110c; line-height: 1.05;
+  text-transform: uppercase;
+}
+.topps-sub { font-size: 9.5px; font-weight: 650; letter-spacing: 0.1em; color: #7a736a; text-transform: uppercase; margin-top: 3px; }
+.topps-adp { text-align: right; flex: none; }
+.topps-adp b { display: block; font-size: 15px; font-weight: 800; color: #14110c; letter-spacing: -0.02em; line-height: 1; }
+.topps-adp span { display: block; font-size: 7.5px; font-weight: 700; letter-spacing: 0.12em; color: #7a736a; margin-top: 2px; }
+
+/* ---- back ---- */
+.topps-face.back { background: #efeadc; display: flex; flex-direction: column; }
+.topps-back-head {
+  border-bottom: 2px solid #14110c; padding-bottom: 6px; margin-bottom: 8px;
+}
+.topps-back-name {
+  font-family: var(--font-display); font-size: 17px; font-weight: 700;
+  text-transform: uppercase; color: #14110c; letter-spacing: -0.01em; line-height: 1.1;
+}
+.topps-back-meta { font-size: 9.5px; color: #6b6357; letter-spacing: 0.07em; text-transform: uppercase; margin-top: 2px; font-weight: 650; }
+
+.topps-stats { width: 100%; border-collapse: collapse; font-size: 10px; color: #2a251d; }
+.topps-stats th, .topps-stats td {
+  padding: 3px 2px; border: none; text-align: right;
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+  position: static; background: none;
+}
+.topps-stats th {
+  font-size: 8px; font-weight: 700; letter-spacing: 0.06em; color: #6b6357;
+  border-bottom: 1px solid #c9c0ae; text-transform: uppercase;
+}
+.topps-stats th:first-child, .topps-stats td:first-child { text-align: left; padding-left: 0; }
+.topps-stats tbody tr:nth-child(even) { background: rgb(0 0 0 / 4%); }
+.topps-stats tbody tr:hover { background: rgb(0 0 0 / 8%); }
+
+.topps-blurb {
+  margin-top: auto; padding-top: 8px; border-top: 1px solid #c9c0ae;
+  font-size: 9.5px; line-height: 1.5; color: #4a4238;
+}
+.topps-flip {
+  position: absolute; bottom: 6px; right: 12px;
+  font-size: 8px; letter-spacing: 0.1em; color: #9a9082; text-transform: uppercase; font-weight: 700;
+}
+
+/* ============================================================================
+   Player page layout
+   ========================================================================= */
+
+.playerhead { display: flex; gap: var(--s6); align-items: flex-start; flex-wrap: wrap; margin-bottom: var(--s5); }
+.playerhead-main { flex: 1; min-width: 320px; }
+
+.sparks { display: flex; gap: var(--s6); flex-wrap: wrap; margin-top: var(--s4); }
+.sparkbox { color: var(--accent); }
+.sparklabel { font-size: 11px; color: var(--muted); margin-bottom: var(--s1); font-weight: 550; }
+.spark { display: block; overflow: visible; }
+
+/* ============================================================================
+   Waiver page
+   ========================================================================= */
+
+.tierhead {
+  display: flex; align-items: baseline; gap: var(--s3);
+  margin: var(--s6) 0 var(--s3); flex-wrap: wrap;
+}
+.tierhead h2 { margin: 0; color: var(--text); font-size: 16px; text-transform: none; letter-spacing: -0.015em; }
+.tierhead .count {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.05em;
+  padding: 2px 9px; border-radius: var(--r-full);
+  background: var(--accent-bg); color: var(--accent); border: 1px solid var(--accent-br);
+}
+.tierhead p { margin: 0; font-size: 12.5px; color: var(--muted); flex-basis: 100%; }
+
+/*
+ * Every card is the same height by construction.
+ *
+ * The first version put the opportunity sentence and the risk notes on the card
+ * face. Grid items stretch to the tallest in the row, so a player who had a note
+ * set the height for everyone and Cade Otton — who has none — was mostly empty
+ * space. Prose also made a nine-card grid genuinely hard to scan.
+ *
+ * So the face carries only what is comparable at a glance: identity, grade, and
+ * three shares. The sentences live one hover away and on the player page, which
+ * is where you go when a card has already earned a second look.
+ */
+.wcard {
+  display: block;
+  position: relative;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--team-bright);
+  border-radius: var(--r-md);
+  padding: var(--s3) var(--s4) 13px;
+  box-shadow: var(--shadow-1);
+  transition: transform 150ms ease, box-shadow 150ms ease, border-color 150ms ease;
+  text-decoration: none;
+  color: inherit;
+}
+.wcard:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-3);
+  border-color: var(--border-strong);
+  border-left-color: var(--team-bright);
+}
+
+.wcard-top { display: flex; align-items: flex-start; gap: var(--s2); }
+.wcard-id { min-width: 0; flex: 1; }
+.wcard-name {
+  font-weight: 620; font-size: 14.5px; letter-spacing: -0.015em;
+  display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.wcard:hover .wcard-name { color: var(--accent); }
+.wcard-meta {
+  display: flex; align-items: center; gap: 5px;
+  font-size: 11px; font-weight: 600; letter-spacing: 0.03em;
+  color: var(--muted); margin-top: 2px; white-space: nowrap;
+}
+.wcard-grade { text-align: right; flex: none; line-height: 1.05; }
+.wcard-grade b { font-size: 21px; font-weight: 750; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+.wcard-grade span { display: block; font-size: 8.5px; font-weight: 700; letter-spacing: 0.09em; color: var(--faint); text-transform: uppercase; margin-top: 1px; }
+
+/* A note exists and is worth opening for — shown as a mark, not a paragraph. */
+.wcard-mark {
+  width: 6px; height: 6px; border-radius: 50%; flex: none;
+  display: inline-block; margin-left: 1px;
+}
+.wcard-mark.open { background: var(--value); }
+.wcard-mark.risk { background: var(--warn); }
+
+.wcard-stats {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: var(--s3); margin-top: 12px;
+  padding-top: 11px; border-top: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+}
+.wcard-stat-label {
+  font-size: 9px; font-weight: 700; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--faint); white-space: nowrap;
+}
+.wcard-stat-value {
+  font-size: 13.5px; font-weight: 680; letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums; margin-top: 1px;
+}
+
+/* ============================================================================
+   Empty state
+   ========================================================================= */
+
+.empty {
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--r-lg);
+  padding: var(--s7) var(--s5);
+  text-align: center;
+  color: var(--muted);
+  background: color-mix(in srgb, var(--panel) 55%, transparent);
+}
+.empty strong { display: block; color: var(--text); font-size: 15px; margin-bottom: var(--s2); font-weight: 620; }
+.empty p { margin: 0 auto; max-width: 52ch; font-size: 13px; line-height: 1.65; }
+
+/* ============================================================================
+   Legend page
+
+   The old version was one continuous scroll of nine sections with no way to see
+   what it contained or jump to a part of it. The structure now leads with a
+   contents rail and orders sections by what a reader needs first: what the tool
+   is, how to read each page, then where the numbers come from, then the
+   measurements and the limits.
+   ========================================================================= */
+
+.legend-layout {
+  display: grid;
+  grid-template-columns: 218px minmax(0, 1fr);
+  gap: var(--s7);
+  align-items: start;
+}
+
+.legend-nav { position: sticky; top: 78px; }
+.legend-nav-title {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.09em;
+  text-transform: uppercase; color: var(--faint);
+  padding: 0 10px var(--s2);
+}
+.legend-nav a {
+  display: block;
+  padding: 6px 10px;
+  border-radius: var(--r-sm);
+  font-size: 13px;
+  line-height: 1.35;
+  color: var(--muted);
+  text-decoration: none;
+  border-left: 2px solid transparent;
+  transition: background 110ms ease, color 110ms ease, border-color 110ms ease;
+}
+.legend-nav a:hover { background: var(--panel-hover); color: var(--text); border-left-color: var(--accent); }
+.legend-nav a .n { color: var(--faint); font-variant-numeric: tabular-nums; margin-right: 7px; font-size: 11px; }
+
+/* Anchored headings must clear the fixed topbar when jumped to. */
+.legend-section { scroll-margin-top: 78px; margin-bottom: var(--s7); }
+.legend-section > h2 {
+  color: var(--text); text-transform: none; letter-spacing: -0.02em;
+  font-size: 19px; margin: 0 0 var(--s2);
+  padding-bottom: var(--s2); border-bottom: 1px solid var(--border);
+}
+.legend-lead { font-size: 14.5px; line-height: 1.7; color: var(--text-2); margin: 0 0 var(--s4); max-width: 72ch; }
+
+/* Key-takeaway strip at the top of a section. */
+.keypoint {
+  display: flex; gap: var(--s3); align-items: flex-start;
+  background: var(--accent-bg);
+  border: 1px solid var(--accent-br);
+  border-radius: var(--r-md);
+  padding: var(--s3) var(--s4);
+  margin: 0 0 var(--s4);
+  font-size: 13.5px; line-height: 1.6; color: var(--text-2);
+}
+.keypoint strong { color: var(--text); }
+.keypoint::before { content: '→'; color: var(--accent); font-weight: 700; flex: none; }
+
+/* Measured-findings table. */
+.findings { width: 100%; font-size: 13px; }
+.findings th { position: static; background: none; border-bottom: 1px solid var(--border); }
+.findings td { border-bottom: 1px solid color-mix(in srgb, var(--border) 55%, transparent); }
+.findings td.r { font-variant-numeric: tabular-nums; font-weight: 650; }
+.findings .good { color: var(--value); }
+.findings .dead { color: var(--faint); }
+
+.glossary { margin-top: var(--s6); }
+.glossary h2 { margin-bottom: var(--s1); color: var(--text); text-transform: none; font-size: 17px; letter-spacing: -0.02em; }
+.blurb { font-size: 13px; color: var(--muted); margin: 0 0 var(--s3); line-height: 1.65; max-width: 74ch; }
+
+.glossary dl { margin: 0; border-top: 1px solid var(--border); }
+.entry {
+  display: grid;
+  grid-template-columns: minmax(150px, 210px) 1fr;
+  gap: var(--s5);
+  padding: var(--s3) 0;
+  border-bottom: 1px solid var(--border);
+  transition: background 110ms ease;
+}
+.entry:hover { background: color-mix(in srgb, var(--accent) 4%, transparent); }
+.entry dt { font-weight: 620; font-size: 14px; letter-spacing: -0.01em; }
+.entry dd { margin: 0; font-size: 14px; line-height: 1.65; color: var(--text-2); }
+.entry .detail { display: block; margin-top: var(--s1); color: var(--muted); font-size: 13px; line-height: 1.6; }
+
+/* ============================================================================
+   Responsive
+   ========================================================================= */
+
+@media (max-width: 900px) {
+  .legend-layout { grid-template-columns: 1fr; gap: var(--s4); }
+  .legend-nav { position: static; border-bottom: 1px solid var(--border); padding-bottom: var(--s3); }
+  .legend-nav > div { display: flex; flex-wrap: wrap; gap: var(--s1); }
+  .legend-nav a { border-left: none; border: 1px solid var(--border); border-radius: var(--r-full); padding: 5px 11px; }
+  .topbar-inner { height: auto; padding: var(--s2) var(--s4); flex-wrap: wrap; gap: var(--s2); }
+  .gsearch { order: 3; max-width: none; flex-basis: 100%; }
+  .wrap { padding: var(--s5) var(--s4) var(--s7); }
+  .playerhead { gap: var(--s5); }
+  .cardstage, .topps { width: 100%; max-width: 300px; }
+}
+
+@media (max-width: 620px) {
+  .entry { grid-template-columns: 1fr; gap: var(--s1); }
+  h1 { font-size: 22px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .cardstage:hover .topps:not([data-flipped='true']) { transform: none; }
+}
+
+/* Scoring note on the card back — "PTS" alone did not say what it counted. */
+.topps-note {
+  display: block;
+  margin-top: 5px;
+  font-size: 7.5px;
+  line-height: 1.45;
+  letter-spacing: 0.01em;
+  /* #8d8375 measured 3.10:1 on this stock, under the 4.5:1 floor — and at this
+     size legibility is the whole point of the line. */
+  color: #5f5749;
+}
+.topps-stats th { white-space: normal; line-height: 1.15; }
+
+/* ============================================================================
+   Player page — outlook
+
+   The comparables blob was being printed as raw JSON. Unpacked it is the most
+   useful thing on the page: the spread of what forty similar historical seasons
+   went on to do, and which players those were.
+   ========================================================================= */
+
+.outlook-h {
+  margin: var(--s6) 0 0; font-size: 11px; font-weight: 700;
+  letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted);
+}
+.outlook-meta {
+  display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 var(--s2);
+}
+
+/* Extra headroom: the "his 2025" reference mark hangs below the track, and the
+   floor/median/ceiling labels hang above it, so the row needs air on both
+   sides or the marks collide with the paragraph either way. */
+.outlook-range { padding: var(--s2) 0 var(--s3); }
+.outlook-track {
+  position: relative;
+  height: 10px;
+  border-radius: var(--r-full);
+  background: linear-gradient(90deg,
+    color-mix(in srgb, var(--reach) 30%, transparent) 0%,
+    color-mix(in srgb, var(--warn) 30%, transparent) 45%,
+    color-mix(in srgb, var(--value) 45%, transparent) 100%);
+  margin: var(--s6) 0 34px;
+}
+/* The 20th-80th span, so the middle 60% of outcomes is visible as an area
+   rather than inferred from two tick marks. */
+.outlook-band {
+  position: absolute; top: 0; bottom: 0;
+  background: color-mix(in srgb, var(--text) 14%, transparent);
+  border-radius: var(--r-full);
+}
+.outlook-marker { position: absolute; top: 50%; transform: translate(-50%, -50%); }
+.outlook-marker i {
+  display: block; width: 3px; height: 22px; border-radius: 2px;
+  background: var(--text); box-shadow: 0 0 0 3px var(--panel);
+}
+.outlook-marker.mid i { width: 4px; height: 26px; }
+.outlook-marker span {
+  position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+  white-space: nowrap; font-size: 11px; font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.outlook-marker small {
+  position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
+  white-space: nowrap; font-size: 9.5px; font-weight: 650;
+  letter-spacing: 0.07em; text-transform: uppercase; color: var(--faint);
+}
+
+/* Reference marks — what HE did, and what a free agent does. Without these the
+   range is three numbers with nothing to be measured against. */
+.outlook-ref { position: absolute; top: 50%; transform: translate(-50%, -50%); }
+.outlook-ref i {
+  display: block; width: 2px; height: 30px; border-radius: 2px;
+}
+.outlook-ref small {
+  position: absolute; top: 34px; left: 50%; transform: translateX(-50%);
+  white-space: nowrap; font-size: 9.5px; font-weight: 700;
+  letter-spacing: 0.04em; font-variant-numeric: tabular-nums;
+}
+.outlook-ref.own i { background: var(--accent); box-shadow: 0 0 0 2px var(--panel); }
+.outlook-ref.own small { color: var(--accent); }
+.outlook-ref.repl i {
+  background: repeating-linear-gradient(180deg, var(--faint) 0 3px, transparent 3px 6px);
+}
+.outlook-ref.repl small { color: var(--faint); font-weight: 650; }
+
+.outlook-ends {
+  display: flex; justify-content: space-between; align-items: baseline;
+  font-size: 11px; color: var(--faint); font-variant-numeric: tabular-nums;
+}
+.outlook-ends span:nth-child(2) {
+  font-variant-numeric: normal; letter-spacing: 0.04em;
+}
+
+/* Comparables table. Every column carries a header where it appears rather than
+   being explained in a paragraph underneath (bug #43). */
+.comp-head {
+  display: grid; grid-template-columns: 20px 1fr 78px 104px;
+  gap: var(--s3); padding: 0 10px var(--s1);
+  font-size: 9.5px; font-weight: 700; letter-spacing: 0.07em;
+  text-transform: uppercase; color: var(--faint);
+}
+.comp-head span:nth-child(3), .comp-head span:nth-child(4) { text-align: right; }
+.comps { display: grid; gap: 6px; }
+.comp {
+  display: grid; grid-template-columns: 20px 1fr 78px 104px;
+  align-items: center; gap: var(--s3);
+  padding: 7px 10px; border-radius: var(--r-sm);
+  background: var(--panel-2); border: 1px solid var(--border);
+  font-size: 12.5px;
+}
+.comp-name { font-weight: 600; }
+.comp-season { color: var(--faint); font-size: 11px; font-variant-numeric: tabular-nums; }
+.comp-then, .comp-next {
+  text-align: right; font-weight: 700; font-variant-numeric: tabular-nums;
+}
+.comp-then { color: var(--muted); font-weight: 600; }
+.comp-then small, .comp-next small {
+  display: block; font-size: 9px; font-weight: 650; letter-spacing: 0.04em;
+  color: var(--faint); text-transform: none;
+}
+/* A comparable who never played again is the outcome the old pool deleted. It
+   is shown, and shown as different from a low score. */
+.comp-next.gone { color: var(--reach); }
+.comp-next.gone small { color: var(--reach); opacity: 0.8; }
+
+/* Provenance, available but not dumped on the page by default. */
+details.prov { margin-top: var(--s3); }
+details.prov > summary {
+  cursor: pointer; font-size: 12.5px; color: var(--muted);
+  padding: 7px 11px; border: 1px solid var(--border); border-radius: var(--r-sm);
+  background: var(--panel-2); list-style: none; user-select: none;
+  display: inline-flex; align-items: center; gap: 7px;
+}
+details.prov > summary::-webkit-details-marker { display: none; }
+details.prov > summary::before { content: '▸'; color: var(--faint); font-size: 10px; }
+details.prov[open] > summary::before { content: '▾'; }
+details.prov > summary:hover { color: var(--text); border-color: var(--border-strong); }
+details.prov > div { margin-top: var(--s3); }
+
+/* Section heading with a coloured rule, so the page reads as sections. */
+.sechead {
+  display: flex; align-items: baseline; gap: var(--s3);
+  margin: var(--s7) 0 var(--s3);
+}
+.sechead h2 {
+  margin: 0; font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--text); font-weight: 700;
+}
+.sechead .rule { flex: 1; height: 1px; background: var(--border); }
+.sechead .hint { font-size: 12px; color: var(--faint); }
+
+/* Ranked comparables — closeness is a real quantity, so it is shown. */
+.comp-rank {
+  flex: none; width: 20px; height: 20px; border-radius: 50%;
+  display: grid; place-items: center;
+  font-size: 10.5px; font-weight: 750; font-variant-numeric: tabular-nums;
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--accent); border: 1px solid var(--accent-br);
+}
+.comp-id { min-width: 0; flex: 1; }
+.comp-meta {
+  display: block; font-size: 10.5px; color: var(--faint);
+  letter-spacing: 0.02em; margin-top: 1px;
+}
+.comp-meta b { font-weight: 650; }
+.comp-meta b.near { color: var(--value); }
+.comp-meta b.mid { color: var(--muted); }
+.comp-meta b.far { color: var(--warn); }
+
+/* ============================================================================
+   Depth chart room — who is ahead, who is behind, and how safe each job is
+   ========================================================================= */
+
+.room { display: grid; gap: 4px; }
+.room-row {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) 78px 92px;
+  gap: var(--s3);
+  align-items: center;
+  padding: 8px 11px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+  font-size: 12.5px;
+}
+.room-row[data-self='true'] {
+  border-color: var(--accent);
+  background: var(--accent-bg);
+  font-weight: 600;
+}
+.room-rank {
+  display: grid; place-items: center;
+  height: 22px; border-radius: var(--r-sm);
+  font-size: 10.5px; font-weight: 750; letter-spacing: 0.03em;
+  background: color-mix(in srgb, var(--pos-color) 16%, transparent);
+  color: var(--pos-color);
+  border: 1px solid color-mix(in srgb, var(--pos-color) 34%, transparent);
+}
+.room-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.room-name small { display: block; font-size: 10.5px; color: var(--faint); font-weight: 400; }
+.room-share { text-align: right; font-variant-numeric: tabular-nums; color: var(--muted); }
+.room-vuln { display: flex; align-items: center; gap: 6px; justify-content: flex-end; }
+.room-vuln .bar { flex: 1; height: 5px; border-radius: var(--r-full); background: color-mix(in srgb, var(--muted) 18%, transparent); overflow: hidden; }
+.room-vuln .bar > i { display: block; height: 100%; background: var(--warn); }
+.room-vuln b { font-variant-numeric: tabular-nums; font-size: 11px; color: var(--warn); min-width: 26px; text-align: right; }
+
+.certainty-bar { height: 7px; border-radius: var(--r-full); background: color-mix(in srgb, var(--muted) 18%, transparent); overflow: hidden; margin-top: 7px; }
+.certainty-bar > i { display: block; height: 100%; border-radius: var(--r-full); }
+
+/* Column headers for the depth-chart room — two bare percentages with no
+   labels was the whole complaint. */
+.room-head {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) 78px 92px;
+  gap: var(--s3);
+  padding: 0 11px 6px;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--faint);
+  line-height: 1.25;
+}
+.room-head span:nth-child(3) { text-align: right; }
+.room-head span:nth-child(4) { text-align: right; }
+
+/* ============================================================================
+   Weekly consistency — replaces three unreadable sparklines with one chart
+   that answers a question: how often did starting him work.
+   ========================================================================= */
+
+.weekly { margin-top: var(--s3); }
+.weekly-head {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  gap: var(--s4); margin-bottom: var(--s3);
+}
+.weekly-head > span:first-child { font-size: 14px; color: var(--text-2); line-height: 1.4; }
+.weekly-head strong { color: var(--text); font-size: 17px; font-variant-numeric: tabular-nums; }
+.weekly-head small { display: block; font-size: 11.5px; color: var(--faint); margin-top: 2px; }
+.weekly-best {
+  text-align: right; font-size: 19px; font-weight: 750;
+  font-variant-numeric: tabular-nums; color: var(--value); line-height: 1;
+}
+.weekly-best small {
+  display: block; font-size: 9px; font-weight: 700; letter-spacing: 0.07em;
+  text-transform: uppercase; color: var(--faint); margin-top: 3px;
+}
+
+.weekly-plot {
+  position: relative;
+  display: flex; align-items: flex-end; gap: 3px;
+  padding: 0 2px;
+  border-bottom: 1px solid var(--border);
+}
+.weekly-bar {
+  flex: 1; min-width: 4px; border-radius: 2px 2px 0 0;
+  background: color-mix(in srgb, var(--muted) 40%, transparent);
+  transition: filter 120ms ease;
+}
+.weekly-bar[data-cleared='true'] { background: var(--value); }
+.weekly-bar[data-missed='true'] {
+  background: color-mix(in srgb, var(--muted) 14%, transparent);
+  border: 1px dashed var(--border-strong);
+  border-bottom: none;
+}
+.weekly-bar:hover { filter: brightness(1.25); }
+
+/* The startable line, drawn across the bars rather than described in a caption. */
+.weekly-line {
+  position: absolute; left: 0; right: 0; height: 0;
+  border-top: 1px dashed var(--accent);
+  pointer-events: none;
+}
+.weekly-axis {
+  display: flex; justify-content: space-between;
+  font-size: 10.5px; color: var(--faint); margin-top: 5px;
+}
+
+/* The weekly key. "grey = did not play" was wrong: grey was doing double duty
+   for weeks played below the line AND weeks missed entirely. */
+.wk-key {
+  display: inline-block; width: 9px; height: 9px; border-radius: 2px;
+  vertical-align: -1px; margin-right: 3px;
+}
+.wk-key.cleared { background: var(--value); }
+.wk-key.played { background: color-mix(in srgb, var(--muted) 55%, transparent); }
+.wk-key.out {
+  background: color-mix(in srgb, var(--muted) 18%, transparent);
+  border: 1px dashed var(--border-strong);
+}
+
+/* Direction, not a static risk score. What decides a pick is whether the man at
+   the top is giving the job up and whether anyone below is taking it. */
+.room-row { grid-template-columns: 34px minmax(0, 1fr) 78px 108px; }
+.room-head { grid-template-columns: 34px minmax(0, 1fr) 78px 108px; }
+.room-trend { font-size: 12px; font-weight: 650; white-space: nowrap; }
+.room-trend.rising { color: var(--value); }
+.room-trend.slipping { color: var(--reach); }
+.room-trend.holding { color: var(--muted); font-weight: 500; }
+.room-why {
+  grid-column: 2 / -1;
+  font-size: 10.5px; color: var(--faint); line-height: 1.35;
+  margin-top: -2px;
+}
+.room-row { row-gap: 2px; }
+
+/* ============================================================================
+   The scouting read — per-opportunity indicators, the offence around them, and
+   the two things that were tested and did not survive.
+
+   Each tile carries its own measured predictive weight where it appears, so a
+   reader never has to hold "which of these actually matters" in their head.
+   ========================================================================= */
+
+.scout-grid {
+  display: grid; gap: var(--s3); margin: var(--s4) 0 var(--s2);
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+.scout {
+  padding: 10px 12px; border-radius: var(--r-sm);
+  background: var(--panel-2); border: 1px solid var(--border);
+  cursor: help;
+}
+.scout:hover, .scout:focus-visible { border-color: var(--border-strong); outline: none; }
+.scout-label {
+  font-size: 9.5px; font-weight: 700; letter-spacing: 0.07em;
+  text-transform: uppercase; color: var(--faint);
+}
+.scout-value {
+  font-size: 21px; font-weight: 750; font-variant-numeric: tabular-nums;
+  margin: 2px 0 6px;
+}
+.scout-note { font-size: 10.5px; color: var(--muted); margin-top: 4px; }
+.scout-weight {
+  font-size: 9.5px; color: var(--faint); margin-top: 3px;
+  font-variant-numeric: tabular-nums;
+}
+.stat-value .ord { font-size: 12px; font-weight: 650; color: var(--faint); }
+
+/* The five-filter screen. Pass and fail are stated per row with the actual
+   figure beside them — a bare "3 of 5" tells you nothing about which two. */
+.screen { display: grid; gap: 4px; margin: var(--s3) 0 var(--s2); }
+.screen-row {
+  display: grid; grid-template-columns: 20px 1fr auto; align-items: center;
+  gap: var(--s3); padding: 6px 10px; border-radius: var(--r-sm);
+  background: var(--panel-2); border: 1px solid var(--border); font-size: 12.5px;
+}
+.screen-row.ok { border-color: var(--value-br); }
+.screen-row.no { border-color: var(--reach-br); }
+.screen-mark { font-weight: 750; }
+.screen-row.ok .screen-mark { color: var(--value); }
+.screen-row.no .screen-mark { color: var(--reach); }
+.screen-actual { font-variant-numeric: tabular-nums; font-weight: 650; color: var(--muted); }
+
+/* Run direction. Deliberately plain — it is description, and dressing it up
+   would imply it earns its place in a projection, which it does not. */
+.runsplit { margin: var(--s3) 0 var(--s2); }
+.runsplit-bar {
+  display: flex; height: 26px; border-radius: var(--r-sm); overflow: hidden;
+  border: 1px solid var(--border);
+}
+.rs {
+  display: grid; place-items: center; font-size: 10.5px; font-weight: 700;
+  color: var(--text); min-width: 0; overflow: hidden;
+}
+.rs.out { background: color-mix(in srgb, var(--accent) 34%, transparent); }
+.rs.tak { background: color-mix(in srgb, var(--muted) 22%, transparent); }
+.rs.ins { background: color-mix(in srgb, var(--warn) 26%, transparent); }
+.runsplit-key {
+  display: flex; flex-wrap: wrap; gap: var(--s4); margin-top: 6px;
+  font-size: 11px; color: var(--muted);
+}
+.runsplit-key i {
+  display: inline-block; width: 9px; height: 9px; border-radius: 2px;
+  margin-right: 5px;
+}
+.runsplit-key i.out { background: color-mix(in srgb, var(--accent) 34%, transparent); }
+.runsplit-key i.tak { background: color-mix(in srgb, var(--muted) 22%, transparent); }
+.runsplit-key i.ins { background: color-mix(in srgb, var(--warn) 26%, transparent); }
+
+/* ============================================================================
+   The VALUE derivation — a receipt for the board's headline number.
+
+   Every row opens. A number a reader cannot take apart is a number they have to
+   trust, and this tool has spent its whole life arguing that trust should be
+   earned per figure rather than granted to the page.
+   ========================================================================= */
+
+.deriv { display: grid; gap: 5px; margin: var(--s4) 0 var(--s2); }
+
+.deriv-step {
+  border: 1px solid var(--border); border-radius: var(--r-sm);
+  background: var(--panel-2); overflow: hidden;
+}
+.deriv-step > summary {
+  display: grid; grid-template-columns: 22px 1fr auto; align-items: center;
+  gap: var(--s3); padding: 9px 11px; cursor: pointer; list-style: none;
+  user-select: none; font-size: 13px;
+}
+.deriv-step > summary::-webkit-details-marker { display: none; }
+.deriv-step > summary:hover { background: var(--panel-hover); }
+.deriv-step[open] > summary { border-bottom: 1px solid var(--border); }
+
+.deriv-idx {
+  width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center;
+  font-size: 10.5px; font-weight: 750; font-variant-numeric: tabular-nums;
+  background: color-mix(in srgb, var(--muted) 14%, transparent); color: var(--muted);
+}
+.deriv-label { font-weight: 600; min-width: 0; }
+.deriv-nums { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.deriv-value { font-size: 15px; font-weight: 750; }
+.deriv-nums small { display: block; font-size: 10px; color: var(--faint); font-weight: 600; }
+
+/* The result row is the board's number, so it reads as the conclusion. */
+.deriv-step.k-result { border-color: var(--accent-br); background: var(--accent-bg); }
+.deriv-step.k-result .deriv-idx { background: var(--accent); color: #fff; }
+.deriv-step.k-result .deriv-value { color: var(--accent); font-size: 17px; }
+.deriv-step.k-replacement .deriv-value { color: var(--reach); }
+
+.deriv-detail { padding: var(--s3) 11px var(--s3) 44px; }
+.deriv-detail p {
+  margin: 0; font-size: 13px; line-height: 1.65; color: var(--text-2); max-width: 78ch;
+}
+
+.deriv-inputs { width: 100%; margin-top: var(--s3); border-collapse: collapse; font-size: 12.5px; }
+.deriv-inputs th {
+  text-align: right; font-size: 9.5px; letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--faint); font-weight: 700; padding: 0 8px 5px; border-bottom: 1px solid var(--border);
+}
+.deriv-inputs th.l, .deriv-inputs td.l { text-align: left; }
+.deriv-inputs td {
+  text-align: right; padding: 5px 8px; font-variant-numeric: tabular-nums;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
+}
+.deriv-inputs td.pos { color: var(--value); font-weight: 650; }
+.deriv-inputs td.neg { color: var(--reach); font-weight: 650; }
+
+/* A stat tile that carries its own explanation. The marker matters: a tooltip
+   nobody knows is there is the same as no tooltip. */
+.stat.explains { cursor: help; }
+.stat.explains:hover, .stat.explains:focus-visible { border-color: var(--border-strong); }
+.stat.explains .stat-label { display: flex; align-items: center; gap: 5px; }
+.stat-q {
+  display: inline-grid; place-items: center; width: 12px; height: 12px;
+  border-radius: 50%; font-style: normal; font-size: 8.5px; font-weight: 800;
+  background: color-mix(in srgb, var(--muted) 22%, transparent); color: var(--muted);
+}
+.stat.explains:hover .stat-q, .stat.explains:focus-visible .stat-q {
+  background: var(--accent); color: #fff;
+}
+.stat-value.coach { font-size: 16px; line-height: 1.25; }
+
+/* Tooltips carrying real explanation need room to be read. */
+.tip { max-width: 380px; line-height: 1.6; }
+
+/* ============================================================================
+   The read — the model's opinion, before any of the numbers.
+
+   Sits at the top of the player page because the page could answer "what is his
+   target share" six ways and could not answer "what do you think of him" at all.
+   ========================================================================= */
+
+.read {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--pos-color, var(--accent));
+  border-radius: var(--r-md);
+  padding: var(--s4) var(--s5);
+  margin: 0 0 var(--s4);
+  box-shadow: var(--shadow-1);
+}
+.read-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: var(--s3); flex-wrap: wrap; margin-bottom: var(--s2);
+}
+.read-head h2 {
+  margin: 0; font-size: 17px; font-weight: 700; letter-spacing: -0.015em;
+  text-transform: none; color: var(--text); line-height: 1.35;
+}
+.read p {
+  margin: 0 0 var(--s2); font-size: 14px; line-height: 1.7;
+  color: var(--text-2); max-width: 82ch;
+}
+.read p:last-child { margin-bottom: 0; }
+
+/* Conviction is about the evidence, not the player — so it is deliberately
+   quiet and never uses the value/reach colours. */
+.read-conv {
+  flex: none; cursor: help; font-size: 10px; font-weight: 700;
+  letter-spacing: 0.07em; text-transform: uppercase; padding: 3px 9px;
+  border-radius: var(--r-full); border: 1px solid var(--border);
+  color: var(--muted); background: var(--panel-2); white-space: nowrap;
+}
+.read-conv.c-high { color: var(--text); border-color: var(--border-strong); }
+.read-conv.c-low { color: var(--faint); }
+
+/* ---------------------------------------------------------------- the case */
+/*
+ * One verdict, then the argument. The three columns are deliberately NOT
+ * colour-coded green/red: the point of the section is that a reader weighs the
+ * evidence, and painting one side as good and the other as bad does the weighing
+ * for them. Only the strength chip carries colour, because that is the thing
+ * being asserted about the evidence rather than about the player.
+ */
+.pcase { margin: 0 0 var(--s4); }
+.pcase-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: var(--s3); margin-bottom: var(--s3);
+}
+.pcase-head h2 { font-size: 19px; font-weight: 650; line-height: 1.3; margin: 0; }
+.pcase-col { margin-top: var(--s3); }
+.pcase-col h3 {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--muted); margin: 0 0 var(--s1);
+}
+.pcase-col ul { list-style: none; margin: 0; padding: 0; }
+.pcase-col li {
+  display: block; padding: 5px 0; font-size: 14px; line-height: 1.45;
+  border-top: 1px solid var(--border);
+}
+.pcase-col li:first-child { border-top: none; }
+.pcase-unknowns li { color: var(--muted); }
+.pcase-str {
+  display: inline-block; margin-right: 8px; padding: 1px 6px; border-radius: 4px;
+  font-size: 10px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase;
+  vertical-align: 1px;
+}
+.pcase-str.s-measured { background: var(--accent-bg); color: var(--accent); }
+.pcase-str.s-weak     { background: var(--panel-hover); color: var(--muted); }
+.pcase-str.s-fact     { background: var(--panel-hover); color: var(--muted); }
+.pcase-str.s-unknown  { background: var(--panel-hover); color: var(--muted); font-style: italic; }
+
+/* ============================================================================
+   Hero, notes and buttons — the new page furniture
+   ========================================================================= */
+
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  gap: var(--s6);
+  align-items: center;
+  padding: var(--s6) var(--s6) calc(var(--s6) + 4px);
+  margin-bottom: var(--s5);
+  border-radius: var(--r-xl);
+  border: 1px solid var(--border);
+  background:
+    radial-gradient(760px 340px at 88% -30%, color-mix(in srgb, var(--accent) 18%, transparent), transparent 70%),
+    linear-gradient(180deg, var(--panel), var(--panel-2));
+  box-shadow: var(--shadow-2);
+  position: relative;
+  overflow: hidden;
+}
+/* A single hairline of accent along the top, so the panel reads as the primary
+   surface without a heavy coloured fill competing with the value palette. */
+.hero::after {
+  content: '';
+  position: absolute; inset: 0 0 auto 0; height: 1px;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--accent) 55%, transparent), transparent);
+}
+
+.eyebrow {
+  display: inline-block;
+  font-size: 11px; font-weight: 700;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: var(--s2);
+}
+
+.hero h1 {
+  font-family: var(--font-display);
+  font-size: clamp(30px, 3.4vw, 44px);
+  line-height: 1.03;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+  margin: 0 0 var(--s3);
+}
+.hero-accent { color: var(--accent); }
+
+.hero-sub {
+  margin: 0 0 var(--s4);
+  max-width: 52ch;
+  font-size: 14.5px;
+  line-height: 1.65;
+  color: var(--muted);
+}
+
+.hero-actions { display: flex; gap: var(--s2); flex-wrap: wrap; }
+
+.btn {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 10px 16px;
+  border-radius: var(--r-full);
+  font-size: 13.5px; font-weight: 620;
+  text-decoration: none;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: transform 140ms cubic-bezier(.2,.7,.3,1), box-shadow 140ms ease, background 140ms ease, border-color 140ms ease;
+}
+.btn:hover { transform: translateY(-1px); }
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--accent) 34%, transparent);
+}
+.btn-primary:hover { box-shadow: 0 8px 22px color-mix(in srgb, var(--accent) 42%, transparent); }
+.btn-ghost {
+  background: var(--panel);
+  color: var(--text-2);
+  border-color: var(--border);
+}
+.btn-ghost:hover { border-color: var(--border-strong); color: var(--text); background: var(--panel-hover); }
+
+.hero-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--s2);
+  margin: 0;
+}
+.hero-stat {
+  padding: var(--s3) var(--s4);
+  border-radius: var(--r-lg);
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--bg) 55%, var(--panel));
+}
+.hero-stat dt {
+  font-size: 10.5px; font-weight: 700; letter-spacing: 0.07em;
+  text-transform: uppercase; color: var(--faint);
+  margin-bottom: 3px;
+}
+.hero-stat dd {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 26px; font-weight: 800; line-height: 1;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+.hero-stat span { display: block; margin-top: 3px; font-size: 11.5px; color: var(--muted); }
+
+.note-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: var(--s3);
+  margin-bottom: var(--s5);
+}
+.note {
+  padding: var(--s4);
+  border-radius: var(--r-lg);
+  border: 1px solid var(--border);
+  background: var(--panel);
+  transition: border-color 150ms ease, transform 150ms cubic-bezier(.2,.7,.3,1);
+}
+.note:hover { border-color: var(--border-strong); transform: translateY(-1px); }
+.note-tag {
+  display: inline-block;
+  font-size: 10.5px; font-weight: 700; letter-spacing: 0.07em;
+  text-transform: uppercase; color: var(--accent);
+  margin-bottom: var(--s2);
+}
+.note p { margin: 0; font-size: 13.5px; line-height: 1.65; color: var(--muted); }
+.note strong { color: var(--text); font-weight: 650; }
+.note a { color: var(--accent); text-decoration: none; font-weight: 600; }
+.note a:hover { text-decoration: underline; }
+
+@media (max-width: 1080px) {
+  .hero { grid-template-columns: minmax(0, 1fr); gap: var(--s5); }
+}
+@media (max-width: 700px) {
+  .shell { grid-template-columns: 60px minmax(0, 1fr); }
+  .rail-label { display: none; }
+  .rail-item { width: 44px; }
+  .wrap { padding: var(--s4) var(--s4) var(--s7); }
+  .hero { padding: var(--s5) var(--s4); }
+  .topbar-inner { padding: 0 var(--s4); }
+}
+
+/* ============================================================================
+   Table refinements — the densest surface, so it gets the most care
+
+   Zebra striping is dropped. With sixteen numeric columns the stripes fight the
+   value/reach colouring for the reader's attention, and an alternating grey is
+   a weaker row guide than a strong hover on a taller row. Hairline separators
+   plus generous vertical rhythm do the same job without adding a second
+   background colour to every screen.
+   ========================================================================= */
+
+.tablewrap {
+  border-radius: var(--r-xl);
+  box-shadow: var(--shadow-1);
+  overflow: auto;
+  max-height: calc(100vh - 130px);
+}
+
+th, td { padding: 12px 11px; }
+th:first-child, td:first-child { padding-left: var(--s5); }
+th:last-child, td:last-child { padding-right: var(--s5); }
+
+tbody tr:nth-child(even) { background: transparent; }
+tbody tr:hover { background: color-mix(in srgb, var(--accent) 6%, transparent); }
+tbody tr:hover td.stripe { border-left-color: var(--team-bright); }
+
+th {
+  font-size: 9.5px;
+  letter-spacing: 0.09em;
+  background: var(--panel);
+  /* The header sits above a scrolling body inside a rounded panel, so it needs
+     its own hairline rather than the shared cell border. */
+  box-shadow: inset 0 -1px 0 var(--border);
+  border-bottom: none;
+  padding-top: 14px; padding-bottom: 11px;
+}
+th[data-sorted='true'] {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 7%, var(--panel));
+}
+
+td { font-size: 13px; }
+.name { font-weight: 600; font-size: 13.5px; }
+
+/* Numbers that carry a verdict get a pill rather than bare coloured text, so a
+   positive and a negative are separable at a glance and by shape, not only by
+   hue — which matters for the ~8% of men with a red/green deficiency. */
+.gap {
+  display: inline-block;
+  min-width: 42px;
+  padding: 3px 8px;
+  border-radius: var(--r-full);
+  font-size: 12px; font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+.gap.pos { color: var(--value); background: var(--value-bg); }
+.gap.neg { color: var(--reach); background: var(--reach-bg); }
+.gap.na  { color: var(--muted); background: transparent; }
+
+/* ---- controls row ---- */
+
+.controls {
+  display: flex; align-items: center; gap: var(--s2);
+  flex-wrap: wrap;
+  margin-bottom: var(--s3);
+  padding: var(--s3) var(--s4);
+  border-radius: var(--r-lg);
+  border: 1px solid var(--border);
+  background: var(--panel);
+}
+.chip {
+  padding: 6px 13px;
+  border-radius: var(--r-full);
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  font-size: 12.5px; font-weight: 600;
+  cursor: pointer;
+  transition: all 130ms ease;
+}
+.chip:hover { border-color: var(--border-strong); color: var(--text); }
+.chip[data-on='true'] {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 42%, transparent);
+  color: var(--accent);
+}
+.chip[data-pos][data-on='true'] {
+  background: color-mix(in srgb, var(--pos-color) 15%, transparent);
+  border-color: color-mix(in srgb, var(--pos-color) 48%, transparent);
+  color: var(--pos-color);
+}
+.search {
+  margin-left: auto;
+  min-width: 210px;
+  padding: 7px 13px;
+  border-radius: var(--r-full);
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font: inherit; font-size: 13px;
+}
+.search:focus { outline: none; box-shadow: var(--ring); border-color: transparent; }
+
+/* ---- the read column ----------------------------------------------------
+   Tags wrap onto three lines for a well-described player, which pushed every
+   row to 105px and turned a dense board into a list of cards. Capping it at two
+   rows of chips keeps the table scannable; the full set is on the player page,
+   and the chips are filters rather than the read itself now that the case
+   carries the verdict.
+   ----------------------------------------------------------------------- */
+td.readcell {
+  max-width: 260px;
+  white-space: normal;
+}
+td.readcell > * { margin: 1px 3px 1px 0; }
+.tag {
+  display: inline-flex; align-items: center;
+  padding: 3px 9px;
+  border-radius: var(--r-full);
+  font-size: 11px; font-weight: 620;
+  letter-spacing: 0.005em;
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+  color: var(--text-2);
+  cursor: pointer;
+  transition: border-color 120ms ease, background 120ms ease, color 120ms ease;
+  white-space: nowrap;
+}
+.tag:hover { border-color: var(--border-strong); color: var(--text); }
+.tag.on, .tag[data-on='true'] {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  color: var(--accent);
+}
+.tag.k-price { background: color-mix(in srgb, var(--accent) 8%, var(--panel-2)); }
+.tag.k-risk  { background: color-mix(in srgb, var(--reach) 9%, var(--panel-2)); color: var(--reach); border-color: color-mix(in srgb, var(--reach) 22%, var(--border)); }
+.tag.k-opportunity { background: color-mix(in srgb, var(--warn) 10%, var(--panel-2)); color: var(--warn); border-color: color-mix(in srgb, var(--warn) 24%, var(--border)); }
+.tag.verdict-gem {
+  background: color-mix(in srgb, var(--value) 14%, transparent);
+  color: var(--value);
+  border-color: color-mix(in srgb, var(--value) 40%, transparent);
+  font-weight: 720;
+}
+.tag.verdict-bust {
+  background: color-mix(in srgb, var(--reach) 14%, transparent);
+  color: var(--reach);
+  border-color: color-mix(in srgb, var(--reach) 40%, transparent);
+  font-weight: 720;
+}
+
+/* Rows settle to a consistent height once the chips stop stacking. */
+tbody td { height: 52px; }
+.tag-more {
+  text-decoration: none;
+  color: var(--muted);
+  background: transparent;
+  border-style: dashed;
+  font-weight: 700;
+}
+.tag-more:hover { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 45%, transparent); }
+
+/* One line per row.
+   Capping the read column at 260px still wrapped three chips onto two lines,
+   which is what kept rows at 78px. The table already scrolls horizontally, so
+   the column can simply take the width it needs and every row settles at one
+   line — which is what makes a board scannable by eye rather than by scrolling. */
+td.readcell { max-width: none; white-space: nowrap; }
+tbody td { height: auto; padding-top: 9px; padding-bottom: 9px; }
+
+/* ============================================================================
+   Shared surfaces — cards, panels, section heads
+   ========================================================================= */
+
+.card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: var(--s5);
+  box-shadow: var(--shadow-1);
+}
+
+.notice {
+  border-radius: var(--r-lg);
+  padding: var(--s4) var(--s5);
+  background: var(--panel);
+  border: 1px solid var(--border);
+  box-shadow: none;
+}
+.notice::before { border-radius: var(--r-lg) 0 0 var(--r-lg); }
+
+/* Section heads get a rule that stops at the text, so a long page reads as
+   chapters rather than as one scroll. */
+.sec-head {
+  display: flex; align-items: baseline; gap: var(--s3);
+  margin: var(--s6) 0 var(--s3);
+}
+.sec-head h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 15px; font-weight: 700;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--text);
+  white-space: nowrap;
+}
+.sec-head::after {
+  content: ''; flex: 1; height: 1px;
+  background: linear-gradient(90deg, var(--border), transparent);
+}
+
+/* The written read leads the player page, so it gets the strongest surface. */
+.read {
+  border-radius: var(--r-xl);
+  padding: var(--s5) var(--s6);
+  background:
+    radial-gradient(600px 260px at 92% -40%, color-mix(in srgb, var(--accent) 14%, transparent), transparent 70%),
+    var(--panel);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-2);
+  margin-bottom: var(--s4);
+}
+.read-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s3); }
+.read h2 {
+  font-family: var(--font-display);
+  font-size: clamp(19px, 2vw, 25px);
+  line-height: 1.15; letter-spacing: -0.015em;
+  text-transform: none; margin: 0 0 var(--s3);
+}
+.read p { color: var(--text-2); line-height: 1.7; font-size: 14.5px; }
+
+.read-conv {
+  flex: none;
+  padding: 4px 11px;
+  border-radius: var(--r-full);
+  font-size: 10.5px; font-weight: 750;
+  letter-spacing: 0.07em; text-transform: uppercase;
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+  color: var(--muted);
+  cursor: help;
+}
+.read-conv.c-high { color: var(--value); background: var(--value-bg); border-color: var(--value-br); }
+.read-conv.c-medium { color: var(--warn); background: var(--warn-bg); border-color: var(--warn-br); }
+
+/* The case panel sits directly under the read and shares its language. */
+.pcase { border-radius: var(--r-xl); padding: var(--s5) var(--s6); }
+.pcase-head h2 { font-family: var(--font-display); letter-spacing: -0.01em; }
+
+/* ---- League page: connected Yahoo rosters -------------------------------- */
+
+.rosterhead { margin-bottom: var(--s3); }
+.rosterhead h2 {
+  margin: 0;
+  font-size: 14px;
+  letter-spacing: -0.01em;
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+}
+.rosterhead p { margin: 2px 0 0; font-size: 11.5px; }
+
+.card[data-mine='true'] { border-color: var(--border-strong); }
+.chip.mine {
+  font-size: 10px;
+  padding: 1px 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  cursor: default;
+}
+
+.roster { list-style: none; margin: 0; padding: 0; }
+.roster li {
+  display: grid;
+  grid-template-columns: 38px 1fr auto;
+  align-items: baseline;
+  gap: var(--s2);
+  padding: 3px 0;
+  font-size: 12.5px;
+  border-top: 1px solid var(--border);
+}
+.roster li:first-child { border-top: none; }
+/* A benched player is still owned; he is dimmed, never hidden. */
+.roster li[data-bench='true'] .slot { opacity: 0.5; }
+.roster .slot {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+.roster .rname a { color: var(--text); text-decoration: none; }
+.roster .rname a:hover { text-decoration: underline; }
+/* Not joinable to nflverse — deliberately visible as a plain, unlinked name. */
+.roster .unmatched { color: var(--muted); font-style: italic; }
+.roster .inj {
+  margin-left: 5px;
+  font-size: 9.5px;
+  font-style: normal;
+  font-weight: 700;
+  color: var(--bad, #d4574e);
+  letter-spacing: 0.04em;
+}
+.roster .rpos { font-size: 11px; white-space: nowrap; }
+
+.steps { margin: 0; padding-left: 1.1em; font-size: 13px; line-height: 1.65; }
+.steps li + li { margin-top: var(--s3); }
+.steps pre {
+  margin: var(--s2) 0 0;
+  padding: var(--s3);
+  background: var(--surface-2, rgba(127,127,127,0.08));
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 11.5px;
+  overflow-x: auto;
+}
+.empty { font-size: 12px; font-style: italic; }
