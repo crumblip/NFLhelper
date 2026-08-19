@@ -2,7 +2,13 @@ import { sqlite } from '../lib/db/index';
 import { fetchEspnNews } from '../lib/providers/news/espn';
 import { FEEDS, fetchFeed } from '../lib/providers/news/rss';
 import type { NewsFetch } from '../lib/providers/news/types';
-import { buildRegistry, classify, resolveMentions } from '../lib/pipeline/news';
+import {
+  buildRegistry,
+  classify,
+  resolveMentions,
+  subjectCounts,
+  vetoOf,
+} from '../lib/pipeline/news';
 
 /**
  * Pulls every news source and stores what it finds.
@@ -78,13 +84,25 @@ async function main(): Promise<void> {
   let unresolved = 0;
   const byCategory = new Map<string, number>();
   const byMethod = new Map<string, number>();
+  const byVeto = new Map<string, number>();
 
   const write = sqlite.transaction(() => {
     for (const f of live) {
       for (const item of f.items) {
         const id = `${f.source}:${item.externalId}`;
         const known = !!exists.get(id);
-        const cls = classify(item.headline, item.body);
+
+        /*
+         * Resolve first, THEN decide relevance. The veto needs to know whether
+         * anybody modelled turned up, so it cannot run on the text alone —
+         * that ordering is the whole point of it.
+         */
+        const resolved = resolveMentions(item, reg);
+        const subjects = subjectCounts(item, resolved, reg);
+        const veto = vetoOf(item.headline, item.body, subjects.skill, subjects.nonSkill);
+        const cls = veto
+          ? { category: 'general' as const, basis: `${veto.reason}: ${veto.basis}` }
+          : classify(item.headline, item.body);
 
         insertItem.run(
           id, f.source, item.externalId, item.headline, item.body ?? null,
@@ -92,7 +110,7 @@ async function main(): Promise<void> {
         );
 
         clearMentions.run(id);
-        for (const m of resolveMentions(item, reg)) {
+        for (const m of resolved) {
           insertMention.run(
             id, m.playerId, m.rawName, m.position, m.team, m.method,
             m.isTeamLevel ? 1 : 0,
@@ -103,6 +121,7 @@ async function main(): Promise<void> {
         }
 
         byCategory.set(cls.category, (byCategory.get(cls.category) ?? 0) + 1);
+        if (veto) byVeto.set(veto.reason, (byVeto.get(veto.reason) ?? 0) + 1);
         if (known) seen++;
         else fresh++;
       }
@@ -112,9 +131,77 @@ async function main(): Promise<void> {
 
   console.log(`\n${fresh} new, ${seen} already held, ${mentions} mentions`);
 
+  /*
+   * Re-file the WHOLE archive, not just what this pull returned.
+   *
+   * The rules change as they are refined, and an item only appears in the feed
+   * for a few hours — so without this, everything stored before a rule changed
+   * keeps the answer the old rules gave it. After the relevance veto was added
+   * the archive held 146 items and the feed returned 105, which left 41 sitting
+   * in the tab under categories the current rules would never assign. A reader
+   * cannot tell those apart from correctly-filed ones, so the tab would be part
+   * new logic and part fossil.
+   *
+   * It is cheap — a few hundred rows of string matching against mentions
+   * already stored — so it runs every time rather than behind a flag nobody
+   * remembers to set.
+   */
+  const stored = sqlite
+    .prepare(`SELECT id, headline, body, category, category_basis AS basis FROM news_item`)
+    .all() as Array<{
+    id: string; headline: string; body: string | null;
+    category: string; basis: string | null;
+  }>;
+
+  const mentionRows = sqlite
+    .prepare(`SELECT news_id AS id, player_id AS playerId, method FROM news_mention`)
+    .all() as Array<{ id: string; playerId: string | null; method: string }>;
+  const byItem = new Map<string, Array<{ playerId: string | null; method: string }>>();
+  for (const m of mentionRows) {
+    const list = byItem.get(m.id) ?? [];
+    list.push(m);
+    byItem.set(m.id, list);
+  }
+
+  const reclass = sqlite.prepare(
+    `UPDATE news_item SET category = ?, category_basis = ? WHERE id = ?`,
+  );
+
+  let moved = 0;
+  sqlite.transaction(() => {
+    for (const s of stored) {
+      const ms = byItem.get(s.id) ?? [];
+      const counts = subjectCounts(
+        { externalId: s.id, headline: s.headline, body: s.body, publishedAt: 0 },
+        ms.map((m) => ({
+          playerId: m.playerId, rawName: '', position: null, team: null,
+          method: m.method as never, isTeamLevel: false,
+        })),
+        reg,
+      );
+      const veto = vetoOf(s.headline, s.body, counts.skill, counts.nonSkill);
+      const next = veto
+        ? { category: 'general', basis: `${veto.reason}: ${veto.basis}` }
+        : classify(s.headline, s.body);
+      if (next.category !== s.category || next.basis !== s.basis) {
+        reclass.run(next.category, next.basis, s.id);
+        moved++;
+      }
+    }
+  })();
+
+  if (moved > 0) console.log(`${moved} stored items re-filed under the current rules`);
+
   console.log('\nthis pull, by category:');
   for (const [cat, n] of [...byCategory.entries()].sort((a, b) => b[1] - a[1])) {
     console.log(`  ${cat.padEnd(12)} ${String(n).padStart(3)}`);
+  }
+
+  if (byVeto.size > 0) {
+    console.log('\nset aside as not fantasy news:');
+    for (const [r, n] of [...byVeto.entries()].sort((a, b) => b[1] - a[1])) {
+      console.log(`  ${r.padEnd(38)} ${String(n).padStart(3)}`);
+    }
   }
 
   console.log('\nhow players were matched:');

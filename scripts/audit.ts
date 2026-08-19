@@ -2347,6 +2347,32 @@ if (newsCount === 0) {
   );
 
   /*
+   * FAMILY #2, pointed at the relevance veto.
+   *
+   * The veto is the most destructive rule in this pipeline — it removes items
+   * before any category is tried — so it needs the same guard the categories
+   * get from the other direction. A veto matching almost everything is not a
+   * filter, it is an outage, and it would look exactly like a quiet news week.
+   *
+   * Generous at 75%: the August feed genuinely is mostly linemen and camp
+   * scuffles, and the measured rate is about a third.
+   */
+  const vetoedN = (
+    sqlite
+      .prepare(
+        `SELECT COUNT(*) n FROM news_item WHERE category = 'general' AND category_basis IS NOT NULL`,
+      )
+      .get() as { n: number }
+  ).n;
+  check(
+    'the relevance veto has not swallowed the feed',
+    vetoedN / newsCount <= 0.75,
+    `${vetoedN} of ${newsCount} items (${((100 * vetoedN) / newsCount).toFixed(0)}%) are being ` +
+      `held back as not fantasy news — a veto that removes nearly everything is an outage, ` +
+      `and reads as a quiet news week`,
+  );
+
+  /*
    * FAMILY #4 — the whole point of resolving through the depth chart.
    *
    * A mention's team must be the team the player is on NOW. This is the check

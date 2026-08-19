@@ -75,11 +75,26 @@ export default async function NewsPage({
 
       <div className="notice">
         <strong>Items are filed by rule, not scored.</strong> Each one is placed in the first
-        category whose wording it matches, and the phrase that decided it is kept and shown on the
-        chip. Anything no rule matched is set aside rather than given a low score —{' '}
-        <strong>{meta.setAside}</strong> of {meta.stored} items are being held back that way, and
-        they are mostly expansion talk, obituaries and training-camp scuffles. A number would imply
-        a measurement nobody made.
+        category whose wording it matches, and the phrase that decided it is kept — hover any
+        category chip to see it. A score would imply a measurement nobody made.
+      </div>
+
+      {/*
+        Two different reasons an item is not here, and they are different claims.
+        Reporting them as one number would present a deliberate exclusion as a
+        failure to classify — the same error as calling a correctly-excluded
+        defender an unresolved name.
+      */}
+      <div className="notice">
+        <strong>
+          {meta.vetoed} of {meta.stored} items are held back as not fantasy news.
+        </strong>{' '}
+        A linebacker&apos;s contract, an offensive tackle carted off, four write-ups of one
+        training-camp brawl. The test runs before any category is tried and asks the prior
+        question — <em>is this about somebody who can score fantasy points</em> — because
+        otherwise every one of those reads as a signing or an injury, which is exactly what they
+        are. A further <strong>{meta.unmatched}</strong> matched no rule either way and are set
+        aside rather than given a low score.
       </div>
 
       <NewsFeed

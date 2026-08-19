@@ -191,6 +191,144 @@ const RULES: Array<{ category: NewsCategory; phrases: string[]; patterns?: RegEx
   },
 ];
 
+/**
+ * Reasons an item is NOT fantasy news, checked before any category is tried.
+ *
+ * This exists because the first version of this pipeline put **36 of 85 items —
+ * 42% of the tab — in front of the reader with no fantasy player in them at
+ * all**: edge rushers signing, an offensive tackle carted off, four separate
+ * write-ups of one joint-practice brawl, and a coach's wife being shot, which
+ * the classifier filed under *scheme*.
+ *
+ * The cause was structural rather than a bad keyword. Categorisation asked
+ * "does this text talk about injuries / roles / signings" and every one of
+ * those items does — a linebacker's contract is a signing. Nothing anywhere
+ * asked the prior question: **is this about somebody who can score fantasy
+ * points.** So the veto runs first, and an item that fails it never reaches a
+ * category.
+ *
+ * Two of the three rules are conditional on no skill player having been found,
+ * and that ordering matters: "Saints workout pair of wide receivers after
+ * Tyson injury" mentions a defender and is still receiver news, so a veto that
+ * fired regardless of who else is named would throw away real items.
+ *
+ * Vetoed items are stored, filed `general`, and carry the phrase that vetoed
+ * them — the same standard as a category basis. They are set aside, not
+ * deleted, so `check:news` can show what is being withheld and why.
+ */
+const OFF_FIELD = [
+  // Nothing here changes a lineup, and several are somebody's bad day rather
+  // than football at all. A brawl is the single most over-covered non-event in
+  // camp: one joint practice produced four items across three sources.
+  'fight', 'fights', 'fighting', 'brawl', 'brawls', 'scuffle', 'altercation',
+  'ejected', 'ejection', 'punch', 'shoved', 'melee',
+  'arrest', 'arrested', 'charged with', 'lawsuit', 'sued', 'court', 'trial',
+  'shot', 'shooting', 'died', 'dies', 'death', 'passed away', 'funeral',
+  'hall of fame', 'expansion', 'anthem', 'stadium deal', 'where to watch',
+  'ticket', 'jersey sales', 'social media post', 'apologiz', 'apologis',
+];
+
+/**
+ * Positions this project does not model. Naming one is a strong signal the item
+ * is about a player who cannot score fantasy points — but only when no skill
+ * player turned up, since a receiver's item may mention the corner covering him.
+ */
+const NON_FANTASY_POSITIONS = [
+  'pass rusher', 'edge rusher', 'edge defender', 'linebacker', 'cornerback',
+  'safety', 'defensive end', 'defensive tackle', 'defensive lineman',
+  'defensive line', 'nose tackle', 'defensive back', 'secondary',
+  'offensive tackle', 'offensive lineman', 'offensive line', 'left tackle',
+  'right tackle', 'left guard', 'right guard', 'long snapper',
+  'kicker', 'punter', 'special teams', 'return specialist',
+  'defensive coordinator', 'defensive depth', 'o-line', 'd-line',
+  /*
+   * The abbreviations feeds use in headlines — "LB Shaq Thompson, DL DaQuan
+   * Jones visit Patriots".
+   *
+   * Only the ones that cannot be ordinary English. An earlier version included
+   * `'s '` for safety and it vetoed "Patriots training camp competitionS,
+   * updated…" — a two-character rule matching every plural and possessive in
+   * the language. `'de '`, `'ot '` and `'og '` came out for the same reason.
+   * This is family #2 in new code: a rule that fires on ordinary text carries
+   * no information about football.
+   */
+  'lb ', 'dl ', 'cb ', 'dt ', 'nt ',
+];
+
+/**
+ * Words that say an item IS about the positions this project models.
+ *
+ * Their job is to STOP a veto rather than cause one. "Roob's Observations: the
+ * challenge Howie Roseman faces deciding what WRs to keep" is receiver news
+ * that happens to name a front-office man, and without this it was thrown away
+ * as "about players this tool does not model".
+ */
+const FANTASY_POSITION_WORDS = [
+  'quarterback', 'running back', 'wide receiver', 'tight end', 'receiver',
+  'backfield', 'rushing attack', 'passing game', 'skill position',
+  'qb', 'rb', 'wr', 'te', 'qbs', 'rbs', 'wrs', 'tes',
+];
+
+export interface Veto {
+  reason: string;
+  basis: string;
+}
+
+/**
+ * Whether an item is about anybody who can score fantasy points.
+ *
+ * `skillPlayers` is how many resolved to a modelled position, `nonSkill` how
+ * many resolved to a real player at a position this tool ignores.
+ */
+export function vetoOf(
+  headline: string,
+  body: string | null | undefined,
+  skillPlayers: number,
+  nonSkill: number,
+): Veto | null {
+  const flat = (s: string) =>
+    ` ${s.toLowerCase().replace(/[^a-z0-9.\- ]/g, ' ').replace(/\s+/g, ' ')} `;
+  const head = flat(headline);
+  const hay = flat(`${headline} ${body ?? ''}`);
+
+  /*
+   * Off-field, and only when it is in the HEADLINE.
+   *
+   * The incident has to be the story, not a sentence in it. Checking the body
+   * too threw away "Day 13 News and Notes from Broncos Camp" and "no update on
+   * Packers' Josh Jacobs" — a camp roundup and a running back's availability —
+   * because a scuffle was mentioned somewhere further down. Every item worth
+   * vetoing here announces itself in the headline: four separate write-ups of
+   * one joint-practice brawl all did.
+   */
+  for (const p of OFF_FIELD) {
+    if (head.includes(` ${p}`)) return { reason: 'not football', basis: p.trim() };
+  }
+
+  // Everything below is only decidable once we know nobody relevant is in it.
+  if (skillPlayers > 0) return null;
+
+  // An item that talks about the modelled positions is about them, whoever
+  // else it names. This gate has to come before both remaining rules.
+  const aboutFantasy = FANTASY_POSITION_WORDS.some((w) =>
+    new RegExp(`(^|[^a-z0-9])${w}([^a-z0-9]|$)`).test(hay),
+  );
+  if (aboutFantasy) return null;
+
+  if (nonSkill > 0) {
+    return {
+      reason: 'about players this tool does not model',
+      basis: `${nonSkill} named player${nonSkill === 1 ? '' : 's'}, none at QB/RB/WR/TE`,
+    };
+  }
+
+  for (const p of NON_FANTASY_POSITIONS) {
+    if (hay.includes(` ${p}`)) return { reason: 'not a fantasy position', basis: p.trim() };
+  }
+
+  return null;
+}
+
 export interface Classification {
   category: NewsCategory;
   /** The phrase that decided it. Null only when nothing matched. */
@@ -261,7 +399,23 @@ export interface PlayerRegistry {
    * in a list nobody reads (family #6 — a default presented as a measurement,
    * one level up).
    */
-  outOfScope: { byEspn: Set<string>; byName: Set<string> };
+  outOfScope: {
+    byEspn: Set<string>;
+    byName: Set<string>;
+    /**
+     * Display names of non-skill players who are ON A ROSTER NOW.
+     *
+     * Scanned against the prose so an item that names only defenders can be
+     * recognised as such. Yahoo tags nothing, so "Kyle Shanahan says Nick Bosa
+     * is making progress in rehab" arrives as plain text with a team nickname
+     * in it, and without this it reads as 49ers injury news.
+     *
+     * Restricted to current players for the same reason the skill list is: the
+     * registry holds every player in nflverse history, and matching a name from
+     * 2014 would veto items about nobody.
+     */
+    currentNames: string[];
+  };
 }
 
 /**
@@ -283,7 +437,16 @@ export function buildRegistry(season: number): PlayerRegistry {
       `SELECT p.gsis_id AS playerId, p.display_name AS name, p.normalized_name AS normalized,
               p.position AS position, p.espn_id AS espnId,
               COALESCE(dcp.team, dca.team, p.latest_team, u.team) AS team,
+              /*
+               * "Current" is on a depth chart, OR being drafted, OR played last
+               * season. That last clause is what covers a free agent: Chase
+               * Claypool and Josh Reynolds are receivers on nobody's chart, and
+               * without it "Chase Claypool, Josh Reynolds get tryouts with the
+               * Saints" attached to neither of them — which is the same
+               * free-agent gap the non-skill scan had, on the other side.
+               */
               CASE WHEN dca.player_id IS NOT NULL OR a.player_id IS NOT NULL
+                        OR p.last_season >= ?
                    THEN 1 ELSE 0 END AS current
        FROM players p
        LEFT JOIN (SELECT player_id, pos_abb, team, MIN(pos_rank) AS rank
@@ -299,7 +462,7 @@ export function buildRegistry(season: number): PlayerRegistry {
          ON a.player_id = p.gsis_id
        WHERE p.position IN ('QB','RB','WR','TE')`,
     )
-    .all(season, season, season) as Array<
+    .all(season - 1, season, season, season) as Array<
       Omit<RegistryPlayer, 'current'> & { current: number }
     >;
 
@@ -328,7 +491,33 @@ export function buildRegistry(season: number): PlayerRegistry {
     if (r.e) offEspn.add(String(r.e));
   }
 
-  return { byEspn, byName, current, outOfScope: { byEspn: offEspn, byName: offName } };
+  /*
+   * Recently active rather than currently listed.
+   *
+   * Keying this on the depth chart missed exactly the players the news is
+   * about: a free agent has no listing until he signs, so "Falcons sign veteran
+   * Za'Darius Smith to aid pass rush" and "The Bills really needed to sign a
+   * player like Greg Gaines" both read as fantasy news — the two men are a
+   * defensive end and a defensive tackle who played in 2025 and appear on no
+   * 2026 chart. Two seasons of recency covers a signing, a holdout and a
+   * comeback, and costs 760 extra strings to scan.
+   */
+  const offCurrent = (
+    sqlite
+      .prepare(
+        `SELECT DISTINCT display_name AS name FROM players
+         WHERE position IS NOT NULL AND position NOT IN ('QB','RB','WR','TE')
+           AND last_season >= ? AND LENGTH(display_name) > 6`,
+      )
+      .all(season - 2) as Array<{ name: string }>
+  ).map((r) => r.name);
+
+  return {
+    byEspn,
+    byName,
+    current,
+    outOfScope: { byEspn: offEspn, byName: offName, currentNames: offCurrent },
+  };
 }
 
 /**
@@ -483,4 +672,32 @@ export function resolveMentions(
   }
 
   return [...out.values()];
+}
+
+/**
+ * Who an item is about, counted by whether this project models them.
+ *
+ * `skill` counts resolved QB/RB/WR/TE. `nonSkill` counts real players at other
+ * positions — both the ones a source tagged and the ones only the prose names,
+ * because the sources that tag nothing are exactly the ones that need it.
+ */
+export function subjectCounts(
+  item: RawNewsItem,
+  mentions: ResolvedMention[],
+  reg: PlayerRegistry,
+): { skill: number; nonSkill: number } {
+  const skill = mentions.filter((m) => m.playerId).length;
+  let nonSkill = mentions.filter((m) => m.method === 'out_of_scope').length;
+
+  if (skill === 0 && nonSkill === 0) {
+    const hay = `${item.headline} ${item.body ?? ''}`;
+    for (const name of reg.outOfScope.currentNames) {
+      if (hay.includes(name)) {
+        nonSkill++;
+        break; // One is enough to answer the question this feeds.
+      }
+    }
+  }
+
+  return { skill, nonSkill };
 }

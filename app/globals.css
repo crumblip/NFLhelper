@@ -2486,3 +2486,30 @@ tbody td { height: auto; padding-top: 9px; padding-bottom: 9px; }
   .inj-row > :nth-child(3), .inj-row > :nth-child(4) { grid-column: 2; }
   .inj-body { grid-column: 1 / -1; }
 }
+
+/* Search sits with the filters, not in the topbar: it narrows this list rather
+   than navigating away, which is a different act from the global player search. */
+.news-search {
+  display: flex; align-items: center; gap: 7px;
+  flex: 1 1 240px; max-width: 340px;
+  padding: 0 var(--s2);
+  height: 30px;
+  border: 1px solid var(--border); border-radius: var(--r-sm);
+  background: var(--panel);
+  transition: border-color 120ms;
+}
+.news-search:focus-within { border-color: var(--accent); }
+.news-search svg { width: 14px; height: 14px; flex: none; color: var(--faint); }
+.news-search input {
+  flex: 1; min-width: 0;
+  border: 0; background: none; outline: none;
+  font: inherit; font-size: 12.5px; color: var(--text);
+}
+.news-search input::placeholder { color: var(--faint); }
+/* The native search clear button is unstyleable and differs per browser. */
+.news-search input::-webkit-search-cancel-button { display: none; }
+.news-search button {
+  flex: none; border: 0; background: none; cursor: pointer;
+  color: var(--faint); font-size: 16px; line-height: 1; padding: 0 2px;
+}
+.news-search button:hover { color: var(--text); }

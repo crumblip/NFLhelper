@@ -117,15 +117,23 @@ export async function fetchFeed(spec: FeedSpec): Promise<NewsFetch> {
       if (!Number.isFinite(published)) continue;
 
       const title = r.title ?? '';
-      let headline = title;
       const athletes: Array<{ name: string }> = [];
 
+      /*
+       * Read the subject off the front, but LEAVE IT ON THE HEADLINE.
+       *
+       * The first version stripped it, on the reasoning that the player is
+       * shown as a chip underneath. That produced headlines with no subject —
+       * "Avoids serious setback but will miss weeks", "Had a rest day Tuesday",
+       * "Dealing with knee injury" — which are unreadable in a list and
+       * unsearchable, because the one word anybody would search for is the
+       * name. The chip answers "who is this about" for filtering; the headline
+       * has to answer it for reading.
+       */
+      const headline = title;
       if (spec.subjectBeforeColon) {
         const split = title.match(/^([^:]{2,40}):\s*(.+)$/);
-        if (split) {
-          athletes.push({ name: split[1]!.trim() });
-          headline = split[2]!.trim();
-        }
+        if (split) athletes.push({ name: split[1]!.trim() });
       }
 
       items.push({

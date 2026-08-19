@@ -59,10 +59,39 @@ for (const cat of ordered) {
 const shown = ordered
   .filter((c) => c !== 'general')
   .reduce((a, c) => a + (counts.get(c) ?? 0), 0);
+
+/*
+ * Vetoed and unmatched are different claims and are counted separately.
+ *
+ * "We looked and it is not fantasy news" is not the same as "no rule
+ * recognised it", and pooling them reports a deliberate exclusion as a failure
+ * — the same error as filing a correctly-excluded defender under unresolved
+ * names. A vetoed item carries the phrase that excluded it; an unmatched one
+ * carries nothing.
+ */
+const vetoed = items.filter((i) => i.category === 'general' && i.basis);
+const unmatched = items.filter((i) => i.category === 'general' && !i.basis);
 console.log(
-  `\n  ${shown} of ${items.length} (${((100 * shown) / items.length).toFixed(1)}%) reach the news tab; ` +
-    `${counts.get('general') ?? 0} are set aside as unclassified.`,
+  `\n  ${shown} of ${items.length} (${((100 * shown) / items.length).toFixed(1)}%) reach the news tab.` +
+    `\n  ${vetoed.length} held back as not fantasy news · ${unmatched.length} matched no rule either way.`,
 );
+
+if (vetoed.length) {
+  const byReason = new Map<string, number>();
+  for (const v of vetoed) {
+    const reason = (v.basis ?? '').split(':')[0]!.trim();
+    byReason.set(reason, (byReason.get(reason) ?? 0) + 1);
+  }
+  console.log('\nWHY ITEMS WERE HELD BACK');
+  console.log('  the relevance test runs before any category, and records what fired\n');
+  for (const [r, n] of [...byReason.entries()].sort((a, b) => b[1] - a[1])) {
+    console.log(`  ${r.padEnd(40)} ${String(n).padStart(4)}`);
+  }
+  console.log('\n  a sample, to check the calls are right:');
+  for (const v of vetoed.slice(0, 6)) {
+    console.log(`     [${(v.basis ?? '').slice(0, 34).padEnd(34)}] ${v.headline.slice(0, 62)}`);
+  }
+}
 
 /* ---- which phrases are doing the work ---------------------------------- */
 

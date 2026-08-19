@@ -59,8 +59,21 @@ export interface NewsMeta {
   stored: number;
   /** Items in a fantasy category — what the tab can show. */
   relevant: number;
-  /** Items the rules could not place. Stated, never silently dropped. */
+  /** Items not shown, for either reason below. Stated, never silently dropped. */
   setAside: number;
+  /**
+   * Items actively judged NOT to be fantasy news — a defender's contract, a
+   * training-camp brawl, an obituary. Each carries the phrase that excluded it.
+   *
+   * Kept apart from `unmatched` because they are different claims. This one
+   * says "we looked and it is not about fantasy"; the other says "no rule
+   * recognised it". Reporting them as one number would present a deliberate
+   * exclusion as a failure to classify, which is the same error as calling a
+   * correctly-excluded defender an unresolved name.
+   */
+  vetoed: number;
+  /** Items no rule placed either way. */
+  unmatched: number;
   /**
    * Relevant items that belong to no single team, and so appear only under ALL.
    *
@@ -230,10 +243,21 @@ function load(): { meta: NewsMeta; byTeam: Map<string, TeamNews>; all: NewsRow[]
   const teamed = new Set<string>();
   for (const t of byTeam.values()) for (const r of t.rows) teamed.add(r.id);
 
+  const vetoed = (
+    sqlite
+      .prepare(
+        `SELECT COUNT(*) n FROM news_item
+         WHERE category = 'general' AND category_basis IS NOT NULL`,
+      )
+      .get() as { n: number }
+  ).n;
+
   const meta: NewsMeta = {
     stored,
     relevant,
     setAside: stored - relevant,
+    vetoed,
+    unmatched: stored - relevant - vetoed,
     leagueWide: all.length - teamed.size,
     oldest: span.a,
     newest: span.b,

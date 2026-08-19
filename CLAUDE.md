@@ -91,7 +91,7 @@ npm run yahoo:auth           # browser consent, paste the code back, lists your 
 npm run ingest:yahoo         # teams, rosters, waivers -> real availability on the wire
 ```
 
-**`npm run audit` runs 113 invariant checks and is wired into `refresh`**, exiting
+**`npm run audit` runs 114 invariant checks and is wired into `refresh`**, exiting
 non-zero on failure. It is negative-tested: injected bugs are caught and rolled
 back. **When a new bug turns up, add a check for its family rather than only
 fixing the instance.**
@@ -2327,9 +2327,115 @@ unattributable items from 30 to 8.
   anyway, so the check fired on correct behaviour. It now tests the read path
   directly by calling `getLeagueNews()`.
 
-### Ten audit checks, all negative-tested
+### The relevance veto — 42% of the first news tab was not fantasy news
 
-Six on news, four on injuries, inserted **above** the summary block per #95.
+Reported as "issues on it". Measured: **36 of 85 items on the tab had no fantasy
+player in them at all** — edge rushers signing, an offensive tackle carted off,
+four separate write-ups of one joint-practice brawl, and a coach's wife being
+shot, which the classifier filed under **scheme**.
+
+**The cause was structural, not a bad keyword.** Categorisation asked "does this
+text talk about injuries, roles or signings", and every one of those items does
+— a linebacker's contract *is* a signing, a tackle being carted off *is* an
+injury. Nothing anywhere asked the prior question: **is this about somebody who
+can score fantasy points.** Adding phrases could never have fixed it, because
+the phrases were matching correctly.
+
+So `vetoOf()` runs **before any category is tried**, and an item that fails it
+never reaches one. Three rules, and the ordering between them is the design:
+
+1. **Off-field, headline only** — fights, brawls, arrests, lawsuits, deaths,
+   Hall of Fame, expansion, "where to watch".
+2. *(stop here if any skill player resolved — the rest is only decidable once
+   nobody relevant has turned up)*
+3. **Named only non-skill players** — resolved from the source's tags, or read
+   out of the prose against recently-active non-skill names.
+4. **A non-fantasy position named** — pass rusher, cornerback, left tackle.
+
+**Rules 3 and 4 are gated behind "does the text mention a modelled position at
+all"**, which is what saves items like *"Roob's Observations: the challenge
+Howie Roseman faces deciding what WRs to keep"* — receiver news that names a
+front-office man, and which the first version threw away.
+
+**The off-field rule reads the HEADLINE only, and that is measured, not
+fastidious.** Checking the body too vetoed *"Day 13 News and Notes from Broncos
+Camp"* and *"no update on Packers' Josh Jacobs"* — a camp roundup and a running
+back's availability — because a scuffle was mentioned further down. Every item
+worth vetoing announces itself in the headline; all four brawl write-ups did.
+
+Result: items shown with no fantasy player fell **36 of 85 → 15 of 72**, and
+what remains is mostly legitimately player-free — rankings pieces, draft guides,
+"Saints workout pair of wide receivers".
+
+**`'s '` for safety was family #2 in brand-new code.** The first veto list
+carried single- and double-letter position abbreviations with a trailing space,
+to catch headlines like *"LB Shaq Thompson, DL DaQuan Jones visit Patriots"*.
+`'s '` matched **every plural and possessive in the English language** and
+vetoed *"Patriots training camp competitionS, updated…"*. `'de '`, `'ot '` and
+`'og '` came out with it. Only abbreviations that cannot be ordinary English
+survive: `lb dl cb dt nt`.
+
+### Three more bugs from the same report
+
+- **RotoWire headlines had their subject stripped off.** The feed titles items
+  `Player Name: what happened`, and the parser moved the name into the athlete
+  list — leaving the headline as *"Avoids serious setback but will miss weeks"*,
+  *"Had a rest day Tuesday"*, *"Dealing with knee injury"*. Unreadable in a list
+  and **unsearchable**, since the one word anybody would type is the name. The
+  name is still extracted; it is no longer removed. The chip answers "who is
+  this about" for filtering, the headline has to answer it for reading.
+
+- **The archive kept whatever the rules said when each item arrived.** An item
+  is in the feed for a few hours, so `ON CONFLICT DO UPDATE` only ever re-files
+  the current pull. After the veto shipped, the archive held 146 items against a
+  105-item pull — **41 rows sitting in the tab under categories the current
+  rules would never assign**, indistinguishable to a reader from correctly-filed
+  ones. The ingest now **re-files the whole archive every run** from mentions it
+  has already stored. Cheap, and not behind a flag anyone would forget.
+
+- **Free agents were invisible to both name scans, in opposite directions.** The
+  non-skill list was keyed on the current depth chart, so *"Falcons sign veteran
+  Za'Darius Smith to aid pass rush"* read as fantasy news — a defensive end with
+  no 2026 listing because he had just signed. The skill list had the same hole,
+  costing the attribution on *"Chase Claypool, Josh Reynolds get tryouts"*. Both
+  now count **recently active** rather than currently listed: a free agent has no
+  listing precisely when he is in the news.
+
+### Vetoed is not unmatched
+
+`check:news` and the page were reporting one number for two different claims.
+**"We looked and it is not fantasy news" is not "no rule recognised it"** — the
+first is a decision with a phrase behind it, the second is a gap. Pooling them
+presents a deliberate exclusion as a failure to classify, which is the same
+error as filing a correctly-excluded defender under unresolved names.
+
+They are now counted and displayed separately, and the page states the veto's
+reasoning rather than implying the items were merely unrecognised. Current
+split: **72 shown · 51 held back as not fantasy news · 24 matched no rule.**
+
+An audit check (`the relevance veto has not swallowed the feed`) guards the
+other direction — a veto removing nearly everything is an outage, and would look
+exactly like a quiet news week.
+
+### Search
+
+A search box sits with the filters rather than in the topbar: it narrows this
+list, which is a different act from the global player search that navigates away.
+
+It covers **the headline, the body and the names of the attached players** — the
+last one matters more than it looks, because an ESPN camp digest is headlined
+"2026 Seattle Seahawks training camp" and names Cooper Kupp only in its athlete
+tags. Terms are AND-ed, so "kamara knee" finds the knee item rather than
+everything about either.
+
+**The chip counts are computed client-side so they follow the search**, each
+facet counting what the *other* filters leave. A count that ignored the search
+box would offer "Injury 20" over a filtered list holding two. The position chips
+also now count in every view rather than only inside a team.
+
+### Eleven audit checks, all negative-tested
+
+Seven on news, four on injuries, inserted **above** the summary block per #95.
 They skip rather than fail when the tables are empty, because a board built
 before the news ingest ever ran is a valid board — a check that fails because a
 feature is unused trains the reader to ignore the audit.
@@ -2355,9 +2461,10 @@ the market and usage, and news touches neither. Nothing on the board or the wire
 reads these tables.
 
 ## Where things stand right now (end of the last session)
-- **`/news` and `/injuries` are live.** News holds 106 items from 3 free
-  sources, 85 of them fantasy-relevant across 31 teams, filed by rule with the
-  deciding phrase kept. Injuries holds 459 skill-position players across all 32
+- **`/news` and `/injuries` are live.** News holds 147 items from 3 free
+  sources: **72 reach the tab across all 32 teams**, 51 are held back by the
+  relevance veto as not fantasy news, 24 matched no rule. Filed by rule with the
+  deciding phrase kept, and searchable by player, team or word. Injuries holds 459 skill-position players across all 32
   teams, 458 with ESPN's written fantasy read. Both are in the rail. Neither
   touches the board — nothing on `/` or `/waiver` reads them.
 - Board: **185 rows** after an ADP re-pull (was 179).
@@ -2370,7 +2477,7 @@ reads these tables.
   wire, 194 clearing the evidence floor. **All 511 now get a range** — the 41
   with no close analogue get it with the midpoint marked rough (#97).
 - Every board row carries a **case**: one verdict, the argument for and against, each point stamped `measured` / `weak` / `fact` / `unknown`.
-- `npm run audit` runs **113 checks** (103 board + 10 news/injury): 112 pass, 1 warning — and the exit code now
+- `npm run audit` runs **114 checks** (103 board + 11 news/injury): 113 pass, 1 warning — and the exit code now
   actually covers all of them (#95). The warning is market coverage: the ADP
   re-pull added six board players the 10-day-old prop feed has never priced, so
   only 39% of WR/RB carry a full market read. It clears when the props are
