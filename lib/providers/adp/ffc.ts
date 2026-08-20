@@ -47,7 +47,7 @@ export async function fetchAdp(
 ): Promise<FfcResponse> {
   const url = `${BASE}/${format}?teams=${teams}&year=${year}`;
   const res = await fetch(url, {
-    headers: { 'User-Agent': 'nflhelper (personal draft tool)' },
+    headers: { 'User-Agent': 'chipship (personal draft tool)' },
   });
   if (!res.ok) throw new Error(`FFC ${res.status} for ${format}/${teams}/${year}`);
 

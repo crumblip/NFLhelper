@@ -117,7 +117,7 @@ export const REPLACEMENT_RANK: Record<string, number> = { QB: 12, RB: 29, WR: 43
  * whole league where the board uses the board. Board WR43 sits at 107.7 against
  * the league's 109.0, so the two agree closely, but each is internally correct.
  */
-/** What the conversion is made of, per position — for logging and for the receipt. */
+/** What the conversion is made of, per position, for logging and for the receipt. */
 export interface UsageScalePart {
   /** Replacement-rank projection on the usage scale. */
   usageReplacement: number;
@@ -359,7 +359,7 @@ export function verdict(
      * the tone reserved for a bargain.
      */
     if (opportunity >= 0.2) {
-      return { label: 'bench flier — volume open, but nobody is owed it', tone: 'caution' };
+      return { label: 'bench flier, volume open, but nobody is owed it', tone: 'caution' };
     }
     if (vorp < -25) return { label: 'no path', tone: 'caution' };
     return { label: 'streamable', tone: 'caution' };

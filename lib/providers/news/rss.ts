@@ -106,7 +106,7 @@ export function parseRss(xml: string): Array<Record<string, string>> {
 
 export async function fetchFeed(spec: FeedSpec): Promise<NewsFetch> {
   try {
-    const res = await fetch(spec.url, { headers: { 'User-Agent': 'Mozilla/5.0 (nflhelper)' } });
+    const res = await fetch(spec.url, { headers: { 'User-Agent': 'Mozilla/5.0 (chipship)' } });
     if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
     const xml = await res.text();
     const rows = parseRss(xml);

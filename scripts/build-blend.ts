@@ -6,7 +6,8 @@ import { buildRiskProfiles, riskNotes } from '../lib/pipeline/risk';
 import { buildVacancies, opportunityFor } from '../lib/pipeline/opportunity';
 import { getRookieSituations, projectRookie } from '../lib/pipeline/rookie';
 import { buildTags, type TagInput } from '../lib/pipeline/tags';
-import { buildCase } from '../lib/pipeline/case';
+import { buildCase, ordinal } from '../lib/pipeline/case';
+import { buildScouting } from '../lib/pipeline/scouting';
 import { buildScarcity, fitStartableCurves, startableRate } from '../lib/pipeline/scarcity';
 import { categoryShares, completeMarket, coveredGroups } from '../lib/pipeline/completion';
 import { buildContingencies } from '../lib/pipeline/depth';
@@ -202,6 +203,15 @@ const coachConcentration = (() => {
 const vacancies = buildVacancies(CURRENT - 1, CURRENT);
 const shares = categoryShares(FORMAT);
 const contingencies = buildContingencies(CURRENT);
+
+/*
+ * The per-opportunity read, built ONCE.
+ *
+ * It scans play-by-play derived tables for every player in the league, so
+ * calling it inside the row loop would repeat that work 195 times. Same reason
+ * the usage model is fitted once and cached in `lib/waiver.ts`.
+ */
+const scouting = buildScouting(CURRENT);
 
 /*
  * Contingent upside: the same fitted usage model, evaluated at the share vector
@@ -946,8 +956,10 @@ sqlite.transaction(() => {
       value: -replLevel,
       running: vorp,
       detail:
-        `${replLevel.toFixed(0)} points is what the ${r.position} you could pick up for free is worth — ` +
-        `the ${REPLACEMENT_RANK[r.position] ?? '?'}th best at the position in a ${TEAMS}-team league, ` +
+        /* "43th" — bugs #66 and #79 in a third file. A page arguing for its own
+           rigour cannot misspell an ordinal and keep the reader for the decimals. */
+        `${replLevel.toFixed(0)} points is what the ${r.position} you could pick up for free is worth: ` +
+        `the ${ordinal(REPLACEMENT_RANK[r.position] ?? 0)} best at the position in a ${TEAMS}-team league, ` +
         `averaged over the last three seasons. Everything above that line is what drafting him ` +
         `actually buys you; the points below it you could have had for nothing.`,
     });
@@ -1024,6 +1036,19 @@ sqlite.transaction(() => {
       upsidePoints: upside.get(r.player_id)?.leadPoints ?? null,
       upsideChance: upside.get(r.player_id)?.leadChance ?? null,
       upsideGain: upside.get(r.player_id)?.expectedGain ?? null,
+      /*
+       * The per-opportunity read. Built once above and looked up here, because
+       * it scans play-by-play for every player and must not run per row.
+       */
+      indicators: scouting.get(r.player_id)?.indicators.map((ind) => ({
+        id: ind.id, label: ind.label, display: ind.display,
+        percentile: ind.percentile, weight: ind.weight, detail: ind.detail,
+      })),
+      screenPassed: scouting.get(r.player_id)?.screen?.passed ?? null,
+      screenClears: scouting.get(r.player_id)?.screen?.clears ?? false,
+      screenMissing: scouting.get(r.player_id)?.screen?.filters
+        .filter((f) => !f.ok)
+        .map((f) => f.label.toLowerCase()),
     };
 
     // The case is built FIRST and its verdict is handed to the tags, so no chip

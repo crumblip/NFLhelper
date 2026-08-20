@@ -445,12 +445,46 @@ report('RB', rushShare, [
   { label: 'age (neg)', get: (r) => -r.age },
 ]);
 
+/*
+ * TE and QB were never measured on the advanced metrics, and the scouting
+ * panel was showing them anyway — wearing the RECEIVER partials. A tight end's
+ * "first downs per game" tile quoted .387, which is the WR number, measured on
+ * 676 receiver-seasons and on no tight end at all.
+ *
+ * That is family #6 with a decimal place on it: a figure presented as measured
+ * for a population nobody measured. The panel's own doc comment says the
+ * partial "is the number quoted on the scouting panel", which made it worse —
+ * the claim was explicit.
+ *
+ * The fix is to measure them, not to hide the tile. The data was already
+ * loaded; these are the same getters the WR and RB reports use.
+ */
 report('TE', targetShare, [
   targetShare,
   { label: 'yards per route run', get: (r) => r.yprr },
   { label: 'red-zone share', get: (r) => r.rzShare },
+  { label: 'first-down touches', get: (r) => r.firstDownTouches },
+  { label: 'first-down rate', get: (r) => r.firstDownRate },
+  { label: 'EPA per touch', get: (r) => r.epaPerTouch },
   { label: 'team points rank (neg)', get: (r) => (r.teamPointsRank === null ? null : -r.teamPointsRank) },
   { label: 'QB EPA/dropback', get: (r) => r.qbEpa },
+  { label: 'age (neg)', get: (r) => -r.age },
+]);
+
+/*
+ * Quarterbacks had no section at all, so every advanced tile on a QB page was
+ * a receiver's number. The control is starter share — the closest thing a
+ * quarterback has to a volume metric, and the one the usage model already says
+ * dominates his projection.
+ */
+report('QB', { label: 'pass-snap share (control)', get: (r) => r.routeShare }, [
+  { label: 'pass-snap share (control)', get: (r) => r.routeShare },
+  { label: 'first-down touches', get: (r) => r.firstDownTouches },
+  { label: 'first-down rate', get: (r) => r.firstDownRate },
+  { label: 'EPA per touch', get: (r) => r.epaPerTouch },
+  { label: 'team points rank (neg)', get: (r) => (r.teamPointsRank === null ? null : -r.teamPointsRank) },
+  { label: 'QB EPA/dropback', get: (r) => r.qbEpa },
+  { label: 'age (neg)', get: (r) => -r.age },
 ]);
 
 /* ------------------------------------------- 3. is outside really better? */

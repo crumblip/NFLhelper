@@ -1,5 +1,5 @@
 /* ============================================================================
-   NFLhelper design system
+   ChipShip design system
 
    Dark-first, because the tool is read in a dim room during a draft and a white
    page at 8pm is punishing. Both themes are real, not one inverted.
@@ -228,15 +228,34 @@ body {
 }
 
 .rail-brand { display: block; margin-bottom: var(--s4); text-decoration: none; }
+/*
+  The brand mark sits directly on the rail with no plate behind it.
+
+  The old monogram needed a filled accent square to read as a mark at all. A
+  real logo does not: boxing it would put a coloured rectangle around artwork
+  that already carries its own silhouette, and the rail is chrome, where one
+  saturated object is plenty (#104).
+
+  The monogram is stacked underneath rather than swapped for, so a missing or
+  still-generating image degrades to two clean letters instead of a broken glyph.
+*/
 .rail-mark {
-  width: 40px; height: 40px;
+  position: relative;
+  width: 42px; height: 42px;
   display: grid; place-items: center;
-  border-radius: 13px;
-  background: var(--accent);
-  color: #fff;
-  font-family: var(--font-display);
-  font-size: 19px; font-weight: 800; letter-spacing: 0.02em;
   transition: transform 140ms cubic-bezier(.2,.7,.3,1);
+}
+.rail-mark b {
+  font-family: var(--font-display);
+  font-size: 15px; font-weight: 800; letter-spacing: 0.04em;
+  color: var(--rail-muted);
+}
+.rail-mark img {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  object-fit: contain;
+  /* A little lift so the dark green chip does not sink into the dark rail. */
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.45));
 }
 .rail-brand:hover .rail-mark { transform: translateY(-1px) scale(1.03); }
 
@@ -2513,3 +2532,253 @@ tbody td { height: auto; padding-top: 9px; padding-bottom: 9px; }
   color: var(--faint); font-size: 16px; line-height: 1; padding: 0 2px;
 }
 .news-search button:hover { color: var(--text); }
+
+/* A creator's name is the strongest provenance signal on the row — it is why
+   the item is trusted at all — so it gets ink weight rather than a colour. */
+.news-src.is-creator { color: var(--text-2); font-weight: 750; cursor: help; }
+.news-item[data-creator='true'] { border-left-color: var(--accent); }
+.news-item[data-creator='true'] .news-src.is-creator::after {
+  content: '▸'; margin-left: 5px; color: var(--faint); font-size: 9px;
+}
+
+/* ============================================================================
+   Compare
+
+   A triptych: a card either side, the evidence down the middle. Equal width on
+   purpose, because the layout should not take a side before the numbers do.
+
+   Colour follows #104. The cards carry team colour because that is what a card
+   is; everything else is ink, and the ONE saturated mark is the win chevron,
+   which is the row-level decision the eye is scanning for.
+   ========================================================================= */
+
+/* ---- pickers ---- */
+.cmp-pickers {
+  display: grid; grid-template-columns: 1fr auto 1fr; gap: var(--s4);
+  align-items: end; margin-bottom: var(--s6);
+}
+.cmp-versus {
+  font-size: 11px; font-weight: 800; color: var(--faint);
+  text-transform: uppercase; letter-spacing: 0.1em; padding-bottom: 11px;
+}
+.cmp-picker-label {
+  font-size: 10.5px; font-weight: 700; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--muted); margin-bottom: 6px;
+}
+.cmp-search { position: relative; }
+.cmp-search input {
+  width: 100%; height: 40px; padding: 0 var(--s3);
+  border: 1px solid var(--border); border-radius: var(--r-sm);
+  background: var(--panel); color: var(--text); font: inherit; font-size: 13.5px;
+}
+.cmp-search input:focus { outline: none; border-color: var(--accent); }
+.cmp-hits {
+  position: absolute; z-index: 30; top: 44px; left: 0; right: 0;
+  margin: 0; padding: 4px; list-style: none;
+  background: var(--panel); border: 1px solid var(--border-strong);
+  border-radius: var(--r-sm); box-shadow: 0 10px 30px rgba(0,0,0,.22);
+  max-height: 320px; overflow-y: auto;
+}
+.cmp-hits button {
+  display: flex; align-items: center; gap: var(--s2); width: 100%;
+  padding: 8px var(--s2); border: 0; background: none; cursor: pointer;
+  font: inherit; font-size: 13px; color: var(--text); text-align: left;
+  border-radius: var(--r-sm);
+}
+.cmp-hits button:hover { background: var(--panel-hover); }
+.cmp-hit-meta { margin-left: auto; font-size: 11px; color: var(--faint); }
+.cmp-chosen {
+  display: flex; align-items: center; gap: var(--s2);
+  height: 40px; padding: 0 var(--s2);
+  border: 1px solid var(--border); border-left: 3px solid var(--team-bright, var(--border-strong));
+  border-radius: var(--r-sm); background: var(--panel);
+}
+.cmp-chosen-name { font-weight: 650; font-size: 13.5px; }
+.cmp-chosen button {
+  margin-left: auto; border: 0; background: none; cursor: pointer;
+  color: var(--faint); font-size: 18px; line-height: 1; padding: 0 4px;
+}
+.cmp-chosen button:hover { color: var(--text); }
+
+/* ---- the triptych ---- */
+.cmp-stage {
+  display: grid; grid-template-columns: 300px minmax(0, 1fr) 300px;
+  gap: var(--s5); align-items: start; margin-bottom: var(--s7);
+}
+.cmp-side { display: flex; flex-direction: column; align-items: center; gap: var(--s3); }
+.cmp-sidefoot { width: 300px; text-align: center; }
+.cmp-sideverdict {
+  margin: 0 0 6px; font-size: 12.5px; line-height: 1.4; color: var(--text-2);
+  font-weight: 600;
+}
+.cmp-conf {
+  display: inline-block; padding: 2px 8px; border-radius: var(--r-full);
+  border: 1px solid var(--border); font-size: 10.5px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted);
+}
+.cmp-conf[data-level='high'] { color: var(--text); border-color: var(--border-strong); }
+.cmp-sidelink {
+  display: block; margin-top: 8px; font-size: 12px; color: var(--muted);
+  text-decoration: none;
+}
+.cmp-sidelink:hover { color: var(--text); }
+
+/* ---- the verdict column ---- */
+.cmp-middle { display: flex; flex-direction: column; gap: var(--s3); }
+.cmp-verdict {
+  padding: var(--s5) var(--s4);
+  border: 1px solid var(--border); border-radius: var(--r-lg);
+  background: var(--panel); text-align: center;
+}
+.cmp-verdict-kicker {
+  display: block; font-size: 10px; font-weight: 700; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--faint); margin-bottom: 6px;
+}
+.cmp-verdict h2 {
+  margin: 0 0 var(--s4); font-size: 19px; line-height: 1.25; font-weight: 700;
+}
+.cmp-verdict p {
+  margin: 0 0 var(--s2); font-size: 12.5px; line-height: 1.6; color: var(--text-2);
+  text-align: left;
+}
+.cmp-verdict .cmp-band { color: var(--muted); font-size: 12px; margin-bottom: 0; }
+
+/* Rows taken, never a score out of a hundred: a percentage here would be the
+   invented precision the brief asked to avoid. */
+.cmp-scoreboard {
+  display: grid; grid-template-columns: 1fr auto 1fr; gap: var(--s3);
+  align-items: center; margin-bottom: var(--s4);
+  padding: var(--s3) 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
+}
+.cmp-score { display: flex; flex-direction: column; gap: 1px; }
+.cmp-score b {
+  font-size: 26px; font-weight: 750; line-height: 1;
+  font-variant-numeric: tabular-nums; color: var(--muted);
+}
+.cmp-score em {
+  font-style: normal; font-size: 10.5px; text-transform: uppercase;
+  letter-spacing: 0.06em; color: var(--faint); font-weight: 600;
+}
+.cmp-score[data-win='true'] b { color: var(--accent); }
+.cmp-score[data-win='true'] em { color: var(--text-2); }
+.cmp-score-level b { font-size: 18px; color: var(--faint); }
+
+.cmp-crosspos {
+  margin: 0; padding: var(--s3) var(--s4);
+  border: 1px dashed var(--border-strong); border-radius: var(--r-md);
+  font-size: 12.5px; line-height: 1.55; color: var(--muted);
+}
+.cmp-crosspos strong { color: var(--text-2); }
+
+/* ---- section heads with their own tally ---- */
+.cmp-group { margin-bottom: var(--s6); }
+.cmp-grouphead {
+  display: flex; align-items: baseline; gap: var(--s3);
+  padding-bottom: var(--s2); margin-bottom: var(--s2);
+  border-bottom: 1px solid var(--border);
+}
+.cmp-grouphead h2 {
+  margin: 0; font-size: 12.5px; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--text); font-weight: 700; flex: none;
+}
+.cmp-grouphead-blurb { flex: 1; font-size: 12px; color: var(--faint); }
+.cmp-groupscore {
+  flex: none; display: inline-flex; align-items: center; gap: var(--s2);
+  padding: 3px 10px; border-radius: var(--r-full);
+  border: 1px solid var(--border); background: var(--panel-2);
+  font-size: 12px; cursor: help;
+}
+.cmp-groupscore b {
+  font-variant-numeric: tabular-nums; font-weight: 750; color: var(--muted);
+}
+.cmp-groupscore b[data-win='true'] { color: var(--accent); }
+.cmp-groupscore em {
+  font-style: normal; font-size: 10px; text-transform: uppercase;
+  letter-spacing: 0.06em; color: var(--faint);
+}
+
+/* ---- rows ---- */
+.cmp-rows { display: flex; flex-direction: column; }
+.cmp-row {
+  display: grid;
+  grid-template-columns: 16px 92px minmax(0, 1fr) 92px 16px;
+  grid-template-rows: auto auto;
+  align-items: center; gap: 3px var(--s3);
+  padding: 10px var(--s2); border-bottom: 1px solid var(--border);
+  cursor: help; border-radius: var(--r-sm);
+}
+.cmp-row:hover, .cmp-row:focus-visible { background: var(--panel-hover); outline: none; }
+
+/* The one saturated mark on the row, because it is the row's decision. */
+.cmp-mark { font-size: 10px; color: transparent; text-align: center; line-height: 1; }
+.cmp-mark[data-won='true'] { color: var(--accent); }
+
+.cmp-val {
+  font-size: 13.5px; font-variant-numeric: tabular-nums; color: var(--faint);
+  font-weight: 600; text-align: right;
+}
+.cmp-val-b { text-align: left; }
+.cmp-val[data-win='true'] { color: var(--text); font-weight: 750; }
+
+.cmp-track {
+  position: relative; height: 8px; border-radius: var(--r-full);
+  background: color-mix(in srgb, var(--muted) 13%, transparent);
+}
+.cmp-fill {
+  position: absolute; top: 0; height: 100%; border-radius: var(--r-full);
+  background: var(--accent); transition: width 320ms cubic-bezier(.2,.8,.2,1), left 320ms cubic-bezier(.2,.8,.2,1);
+}
+.cmp-fill[data-side='level'] { background: var(--muted); opacity: 0.4; }
+.cmp-mid {
+  position: absolute; left: 50%; top: -3px; width: 1px; height: 14px;
+  background: var(--border-strong);
+}
+.cmp-label {
+  grid-column: 3; grid-row: 2; text-align: center;
+  font-size: 11.5px; color: var(--muted);
+}
+.cmp-label b {
+  margin-left: 7px; color: var(--faint); font-weight: 700;
+  font-variant-numeric: tabular-nums; font-size: 10.5px;
+}
+
+@media (max-width: 1120px) {
+  .cmp-stage { grid-template-columns: 1fr; }
+  .cmp-side, .cmp-sidefoot { width: auto; }
+  .cmp-middle { order: -1; }
+}
+@media (max-width: 760px) {
+  .cmp-pickers { grid-template-columns: 1fr; }
+  .cmp-versus { display: none; }
+  .cmp-row { grid-template-columns: 12px 70px minmax(0,1fr) 70px 12px; }
+  .cmp-grouphead { flex-wrap: wrap; }
+}
+
+/* The mode note. Which question the page just answered, before the rows. */
+.cmp-modenote {
+  margin: 0; padding: var(--s3) var(--s4);
+  border: 1px solid var(--border); border-left: 3px solid var(--accent);
+  border-radius: var(--r-md); background: var(--panel-2);
+  font-size: 12.5px; line-height: 1.55; color: var(--muted);
+}
+.cmp-modenote strong { color: var(--text-2); }
+
+/*
+  The wordmark, in type, in the topbar.
+
+  Split from the rail mark deliberately: the rail slot is 42px and cannot carry
+  readable text, the topbar has the width. Condensed and letterspaced to echo
+  the logo's own block lettering without trying to imitate it, since a bitmap of
+  the wordmark would go soft at this size and could not follow the theme.
+*/
+.brandmark {
+  flex: none; margin-right: var(--s4);
+  font-family: var(--font-display);
+  font-size: 16px; font-weight: 800; letter-spacing: 0.07em;
+  color: var(--text-2); text-decoration: none; white-space: nowrap;
+  transition: color 120ms;
+}
+.brandmark b { color: var(--text); font-weight: 800; }
+.brandmark:hover { color: var(--text); }
+
+@media (max-width: 720px) { .brandmark { display: none; } }

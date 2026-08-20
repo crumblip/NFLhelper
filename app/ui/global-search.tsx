@@ -111,7 +111,7 @@ export default function GlobalSearch({ index }: { index: SearchEntry[] }) {
         ref={inputRef}
         type="search"
         value={query}
-        placeholder="Search any player — drafted or not…"
+        placeholder="Search any player, drafted or not…"
         aria-label="Search players"
         onChange={(e) => {
           setQuery(e.target.value);

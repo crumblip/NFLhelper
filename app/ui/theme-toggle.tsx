@@ -33,9 +33,9 @@ export default function ThemeToggle() {
     setDark(next);
     document.documentElement.setAttribute('data-theme', next ? 'dark' : 'light');
     try {
-      localStorage.setItem('nflhelper-theme', next ? 'dark' : 'light');
+      localStorage.setItem('chipship-theme', next ? 'dark' : 'light');
     } catch {
-      /* private mode — the choice just does not persist */
+      /* private mode, the choice just does not persist */
     }
   };
 

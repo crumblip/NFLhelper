@@ -21,7 +21,7 @@ export interface Tag {
   kind: TagKind;
   /** Shown on hover: what the tag means and the number behind it. */
   detail: string;
-  /** Sort weight within kind — higher is more notable. */
+  /** Sort weight within kind, higher is more notable. */
   weight: number;
 }
 
@@ -49,7 +49,7 @@ export interface TagInput {
   gamesLastSeason: number | null;
   /** Share of comparable historical seasons that finished top-12 at the position. */
   breakoutRate: number | null;
-  /** Share that failed to clear replacement — the complement of the hit rate. */
+  /** Share that failed to clear replacement, the complement of the hit rate. */
   bustRate: number | null;
   /**
    * Where those rates sit among late picks at the SAME position, 0-100.
@@ -111,6 +111,40 @@ export interface TagInput {
   upsidePoints: number | null;
   upsideChance: number | null;
   upsideGain: number | null;
+  /**
+   * The calibrated per-opportunity indicators from `buildScouting`, with each
+   * one's measured partial correlation and its percentile within position.
+   *
+   * These existed and the case ignored them, which is why the average case had
+   * only **1.14 measured points** and 68% of the board read LOW confidence.
+   * Everything the project has calibrated about how a player performs per
+   * touch — first downs, EPA, yards per route, yards per carry — was on the
+   * scouting panel and absent from the argument the page actually leads with.
+   *
+   * A null `weight` means the metric is dead for this position and it is not
+   * used as evidence at all. That distinction has to survive to here, or a
+   * quarterback's first-down rate becomes a "measured" point on a correlation
+   * of .055.
+   */
+  indicators?: Array<{
+    id: string;
+    label: string;
+    display: string;
+    percentile: number | null;
+    weight: number | null;
+    detail: string;
+  }>;
+  /**
+   * The five-filter receiver screen: how many of the five he clears.
+   *
+   * The strongest single screen in the project — cleared all five in season N
+   * meant 228 points and 62% top-12 in N+1, against 142 and 20% for receivers
+   * who held a real role and did not. A three-fold lift on the probability of a
+   * startable season, and it was not in the case either.
+   */
+  screenPassed?: number | null;
+  screenClears?: boolean;
+  screenMissing?: string[];
   /**
    * The verdict the case reached, so a chip can never contradict the headline.
    * Set by the caller after `buildCase`; see the bust tag for why.
@@ -374,7 +408,7 @@ export function buildTags(i: TagInput): Tag[] {
   if (i.adp <= 36 && (i.slotGap ?? 0) <= -20) {
     bustReasons.push(
       `the evidence prices him about ${Math.round(Math.abs(i.slotGap!))} points below what pick ` +
-        `${i.adp.toFixed(0)} normally returns — and inside the first three rounds that gap is the one ` +
+        `${i.adp.toFixed(0)} normally returns, and inside the first three rounds that gap is the one ` +
         `price signal on this board that has actually held up`,
     );
   }
@@ -405,7 +439,7 @@ export function buildTags(i: TagInput): Tag[] {
     tags.push({
       id: 'bust', label: 'bust lean', kind: 'risk', weight: 12,
       detail:
-        `Priced at ${i.adp.toFixed(0)} — ${bustReasons.join('; ')}. Read it as a lean rather than a ` +
+        `Priced at ${i.adp.toFixed(0)}, ${bustReasons.join('; ')}. Read it as a lean rather than a ` +
         `verdict: nothing known before a season starts picks out which early picks disappoint with ` +
         `much confidence, and most of what looks like it does turns out to be noise.`,
     });
@@ -455,7 +489,7 @@ export function buildTags(i: TagInput): Tag[] {
         `Leads his position group in ${Math.round(i.upsideChance! * 100)}% of outcomes and is worth ` +
         `${i.upsidePoints!.toFixed(0)} points there, against ` +
         `${((i.vorp ?? 0) + (i.replacementLevel ?? 0)).toFixed(0)} in the role he holds today. The ` +
-        `chance is the product over everyone ahead of him, not the chance any one of them falls — ` +
+        `chance is the product over everyone ahead of him, not the chance any one of them falls, ` +
         `a third-string back needs two absences, not one. VALUE averages every branch together, ` +
         `which describes none of them.`,
     });
@@ -467,7 +501,7 @@ export function buildTags(i: TagInput): Tag[] {
       id: 'dead-end', label: 'NO UPSIDE', kind: 'risk', weight: 11,
       detail:
         `Of the 40 most similar historical seasons, ${pct(i.breakoutRate)} finished top-12 at the ` +
-        `position and ${pct(i.bustRate)} were worth less than a player you could have had for free — ` +
+        `position and ${pct(i.bustRate)} were worth less than a player you could have had for free, ` +
         `bottom fifth for upside and top third for outright failure among ${i.position}s going ` +
         `this late. There is no version of this pick that wins you a week.`,
     });
@@ -478,7 +512,7 @@ export function buildTags(i: TagInput): Tag[] {
       id: 'late-upside', label: 'startable upside', kind: 'price', weight: 10,
       detail:
         `${pct(i.breakoutRate)} of comparable seasons finished top-12 at his position, against ` +
-        `${pct(i.bustRate)} that returned nothing — the top quarter for upside among ${i.position}s ` +
+        `${pct(i.bustRate)} that returned nothing, the top quarter for upside among ${i.position}s ` +
         `going this late. His projection sits below replacement like everyone else down here; the ` +
         `difference is that this profile has actually paid off before.`,
     });
@@ -512,7 +546,7 @@ export function buildTags(i: TagInput): Tag[] {
       detail:
         `He was his team's number ${i.priorRoleRank} option at ${i.position} last season by ` +
         `${isRb ? 'rush share' : 'target share'}, and is listed ${i.position}${i.depthRank} now. ` +
-        `The projection is built on that older role, because usage is the only thing measured — ` +
+        `The projection is built on that older role, because usage is the only thing measured, ` +
         `so it understates him by however much the promotion is worth. That amount is NOT ` +
         `quantified here: there are no historical depth charts in this database to calibrate it ` +
         `against, and an invented multiplier would be a guess dressed as a number.`,
@@ -524,7 +558,7 @@ export function buildTags(i: TagInput): Tag[] {
       id: 'contingent', label: 'has a branch', kind: 'opportunity', weight: 7,
       detail:
         `${i.contingentNote}. This is about the man ahead getting hurt or benched during the season, which ` +
-        `is a different thing from volume leaving in the offseason — and unlike that, it does reach ` +
+        `is a different thing from volume leaving in the offseason, and unlike that, it does reach ` +
         `the backup. It is still a branch, not an expectation: it says how big the outcome would be, ` +
         `not that it will happen.`,
     });
@@ -536,7 +570,7 @@ export function buildTags(i: TagInput): Tag[] {
       detail:
         `His offence ranked ${i.teamOffenseRank} of 32 in touchdowns. Team scoring predicts a ` +
         `player's next-season touchdown rate at +0.15 even after his own red-zone share is ` +
-        `accounted for — the environment matters on top of the role.`,
+        `accounted for, the environment matters on top of the role.`,
     });
   } else if ((i.teamOffenseRank ?? 33) <= 6) {
     tags.push({
@@ -555,7 +589,7 @@ export function buildTags(i: TagInput): Tag[] {
         detail:
           `Projects below a player you could pick up for free, and ${pct(i.vacated)} of his team's volume ` +
           `has left. The name is meant literally. Teams replace departed work rather than handing it ` +
-          `down, so nobody is owed this — it is a wide range on a bench spot, not a job waiting for him.`,
+          `down, so nobody is owed this, it is a wide range on a bench spot, not a job waiting for him.`,
       });
     } else if (i.vorp <= 0) {
       /*
@@ -576,14 +610,14 @@ export function buildTags(i: TagInput): Tag[] {
           id: 'replacement-level', label: 'replacement level', kind: 'price', weight: 4,
           detail:
             `Projects within ${Math.round(shortfall * 100)}% of the freely available player at his ` +
-            `position — effectively a coin flip against streaming the spot. Not a reason to spend ` +
+            `position, effectively a coin flip against streaming the spot. Not a reason to spend ` +
             `a pick, and not the same as having no path.`,
         });
       } else {
         tags.push({
           id: 'bench', label: 'not startable', kind: 'price', weight: 4,
           detail:
-            `Projects ${Math.abs(i.vorp).toFixed(0)} points below replacement — the freely ` +
+            `Projects ${Math.abs(i.vorp).toFixed(0)} points below replacement, the freely ` +
             `available player at his position outscores him by a clear margin.`,
         });
       }
@@ -609,7 +643,7 @@ export function buildTags(i: TagInput): Tag[] {
         id: 'gap-unreliable', label: 'price read unreliable here', kind: 'price', weight: 3,
         detail:
           `His projection sits ${Math.round(Math.abs(i.slotGap))} points ${i.slotGap > 0 ? 'above' : 'below'} ` +
-          `what pick ${i.adp.toFixed(0)} normally returns — and through the middle rounds that number ` +
+          `what pick ${i.adp.toFixed(0)} normally returns, and through the middle rounds that number ` +
           `is not worth acting on. Everything weakens here, not just this: the draft order itself ` +
           `predicts about a fifth as well as it does in round one, and so does last season's ` +
           `production. It also reads positive for 4 players in 5 down here regardless of who they ` +
@@ -693,7 +727,7 @@ export function buildTags(i: TagInput): Tag[] {
         detail:
           `Listed QB${i.depthRank} on his team's current depth chart, and on the field for only ` +
           `${pct(i.routeShare)} of dropbacks last season. Being the starter is the single largest ` +
-          `fact about a quarterback's fantasy value — it is the strongest term in the quarterback ` +
+          `fact about a quarterback's fantasy value, it is the strongest term in the quarterback ` +
           `model at +50 points per standard deviation.`,
       });
     }
@@ -707,7 +741,7 @@ export function buildTags(i: TagInput): Tag[] {
         detail:
           `Took ${pct(i.rushShare)} of ${whose(i)} carries last season. Rushing volume is what separates ` +
           `quarterbacks who finish top five from those who throw for the same yardage and ` +
-          `finish twelfth — it adds points the passing line never shows.`,
+          `finish twelfth, it adds points the passing line never shows.`,
       });
     }
 
@@ -736,7 +770,7 @@ export function buildTags(i: TagInput): Tag[] {
     tags.push({
       id: 'committee', label: isRb ? 'committee back' : 'depth target', kind: 'role', weight: 4,
       detail: isRb
-        ? `Took only ${pct(primary)} of ${whose(i)} carries last season — splitting work. A team's listed RB1 can still be in a committee, so this describes volume, not depth-chart position.`
+        ? `Took only ${pct(primary)} of ${whose(i)} carries last season, splitting work. A team's listed RB1 can still be in a committee, so this describes volume, not depth-chart position.`
         : `Took only ${pct(primary)} of ${whose(i)} targets last season. Not a focal point of the passing game.`,
     });
   }
@@ -779,7 +813,7 @@ export function buildTags(i: TagInput): Tag[] {
     tags.push({
       id: 'every-down', label: 'never off field', kind: 'role', weight: 6,
       detail:
-        `On the field for ${pct(i.routeShare)} of pass plays last season — top of the ` +
+        `On the field for ${pct(i.routeShare)} of pass plays last season, top of the ` +
         `${i.position} distribution, where the bar is ${pct(fullTimeLine)} because ` +
         `${isRb ? 'even a bell cow comes off on obvious passing downs' : 'full-time receivers rarely leave the field'}. ` +
         `A full-time role, though it was earned ${i.usageTeam && i.currentTeam && i.usageTeam !== i.currentTeam ? `at ${i.usageTeam} before his move` : 'in this offence'}.`,
@@ -787,7 +821,7 @@ export function buildTags(i: TagInput): Tag[] {
   } else if (!isRb && i.routeShare !== null && i.routeShare <= 0.55) {
     tags.push({
       id: 'rotational', label: 'rotational', kind: 'role', weight: 3,
-      detail: `Only ${pct(i.routeShare)} of pass plays last season — came off the field, which caps his ceiling.`,
+      detail: `Only ${pct(i.routeShare)} of pass plays last season, came off the field, which caps his ceiling.`,
     });
   }
   }
@@ -815,7 +849,7 @@ export function buildTags(i: TagInput): Tag[] {
       id: 'volume-open', label: 'volume vacated', kind: 'opportunity', weight: 9,
       detail:
         `${pct(i.vacated)} of the ${isRb ? 'carries' : 'targets'} he competes for left the roster. Whether ` +
-        `any of it reaches him is genuinely unknown — checked across more than a thousand cases, the ` +
+        `any of it reaches him is genuinely unknown, checked across more than a thousand cases, the ` +
         `next man up gains nothing on average, because teams sign and draft replacements instead of ` +
         `promoting. Individual players swing hard both ways. Read it as his range widening, not as ` +
         `volume he is owed.`,
@@ -844,7 +878,7 @@ export function buildTags(i: TagInput): Tag[] {
       id: 'injury', label: 'injury prone', kind: 'risk', weight: 9,
       detail:
         `Averages ${i.expectedGames.toFixed(1)} games a season. A receiver who missed four or more ` +
-        `games misses time again 73% of the time — availability is one of the most repeatable ` +
+        `games misses time again 73% of the time, availability is one of the most repeatable ` +
         `things in the data.`,
     });
   }
@@ -854,7 +888,7 @@ export function buildTags(i: TagInput): Tag[] {
       id: 'td-regress', label: 'TD regression', kind: 'risk', weight: 7,
       detail:
         `Scored ${i.tdOverExpected.toFixed(1)} touchdowns more than his red-zone volume supports. ` +
-        `Scoring above volume carries over at r=0.12 — it is mostly luck and it does not repeat.`,
+        `Scoring above volume carries over at r=0.12, it is mostly luck and it does not repeat.`,
     });
   } else if (i.tdOverExpected !== null && i.tdOverExpected <= -2) {
     tags.push({
@@ -884,7 +918,7 @@ export function buildTags(i: TagInput): Tag[] {
       detail:
         `${i.priorCoach ?? 'His previous coach'} is gone${i.currentCoach ? `; ${i.currentCoach} takes over` : ''}. ` +
         `Backs who stayed put through a coaching change lost 24.5 points the next season against ` +
-        `12.5 for backs who kept their coach — about 12 points of cost, measured over 338 cases. ` +
+        `12.5 for backs who kept their coach, about 12 points of cost, measured over 338 cases. ` +
         `Backfield usage is a coaching decision more than a talent one, and a new staff has no ` +
         `stake in the last one's depth chart.`,
     });
@@ -902,8 +936,8 @@ export function buildTags(i: TagInput): Tag[] {
         id: 'feeds-one-back', label: 'feeds one back', kind: 'opportunity', weight: 5,
         detail:
           `${i.currentCoach}'s lead back has averaged ${pct(i.coachTopBackShare)} of team carries. ` +
-          `Backfield concentration follows the coach — it repeats at r=0.337 when he stays and only ` +
-          `r=0.107 when a team changes coach — so whoever wins this job should get the whole of it. ` +
+          `Backfield concentration follows the coach, it repeats at r=0.337 when he stays and only ` +
+          `r=0.107 when a team changes coach, so whoever wins this job should get the whole of it. ` +
           `Two to five seasons per coach, so treat it as a lean rather than a law.`,
       });
     } else if (i.coachTopBackShare <= 0.47) {
@@ -912,7 +946,7 @@ export function buildTags(i: TagInput): Tag[] {
         detail:
           `${i.currentCoach}'s lead back has averaged only ${pct(i.coachTopBackShare)} of team ` +
           `carries. That tendency follows the coach rather than the roster, so the workload here is ` +
-          `likely to be shared however the depth chart reads. Two to five seasons per coach — a ` +
+          `likely to be shared however the depth chart reads. Two to five seasons per coach, a ` +
           `lean, not a law.`,
       });
     }
@@ -949,7 +983,7 @@ export function buildTags(i: TagInput): Tag[] {
     tags.push({
       id: 'partial-market', label: 'partial lines', kind: 'coverage', weight: 3,
       detail:
-        `Sportsbooks price only part of what he does — usually a back with no receiving line, worth ` +
+        `Sportsbooks price only part of what he does, usually a back with no receiving line, worth ` +
         `about 77 points. The market side is a floor, so the read leans on usage.`,
     });
   } else if (i.extrapolatedStats > 0) {

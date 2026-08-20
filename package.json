@@ -1,5 +1,5 @@
 {
-  "name": "nflhelper",
+  "name": "chipship",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -65,7 +65,9 @@
     "ingest:news": "tsx scripts/ingest-news.ts",
     "ingest:injuries": "tsx scripts/ingest-injuries.ts",
     "news": "npm run ingest:news && npm run ingest:injuries",
-    "check:news": "tsx scripts/check-news.ts"
+    "check:news": "tsx scripts/check-news.ts",
+    "strip:emdash": "tsx scripts/strip-emdash.ts",
+    "build:logo": "tsx scripts/build-logo.ts"
   },
   "dependencies": {
     "@radix-ui/react-hover-card": "^1.1.23",

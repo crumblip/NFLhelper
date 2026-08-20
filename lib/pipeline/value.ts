@@ -234,7 +234,7 @@ export function gridFor(grids: Map<string, GridPoint[]>, position: string): Grid
   return grids.get(position.toUpperCase()) ?? grids.get('ALL') ?? [];
 }
 
-/** Pooled curve only — kept for callers that are not position-aware. */
+/** Pooled curve only, kept for callers that are not position-aware. */
 export function loadGrid(format: string, teams: number): GridPoint[] {
   return loadGrids(format, teams).get('ALL') ?? [];
 }

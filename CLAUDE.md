@@ -1,4 +1,4 @@
-# NFLhelper — project memory
+# ChipShip — project memory
 
 Fantasy football draft and waiver tool. Compares **sportsbook prop lines** and
 **on-field usage** against **ADP** to find value. Half-PPR, 12-team.
@@ -91,7 +91,7 @@ npm run yahoo:auth           # browser consent, paste the code back, lists your 
 npm run ingest:yahoo         # teams, rosters, waivers -> real availability on the wire
 ```
 
-**`npm run audit` runs 114 invariant checks and is wired into `refresh`**, exiting
+**`npm run audit` runs 118 invariant checks and is wired into `refresh`**, exiting
 non-zero on failure. It is negative-tested: injected bugs are caught and rolled
 back. **When a new bug turns up, add a check for its family rather than only
 fixing the instance.**
@@ -2176,7 +2176,8 @@ credits the way the prop feed does, so `npm run news` is safe to run on a timer.
 | **RotoWire RSS** | player-level fantasy news | **5 items**, rolling ~2 hours | headline is `Player Name: what happened` |
 | **Yahoo Sports RSS** | general NFL news | 50 items | **nothing** — no ids, no team tags |
 
-**X/Twitter and Instagram are not reachable and no amount of code fixes that.**
+**X/Twitter is not reachable; Instagram is reachable but useless — see the
+creator roster section below, which routes around both.**
 X's API has no free read tier — reading tweets starts at a paid plan — and the
 open mirrors are gone. Instagram's Graph API only exposes accounts you own, so
 reels from a fantasy analyst are not fetchable by any supported route. The
@@ -2433,9 +2434,176 @@ facet counting what the *other* filters leave. A count that ignored the search
 box would offer "Injury 20" over a filtered list holding two. The position chips
 also now count in every view rather than only inside a team.
 
-### Eleven audit checks, all negative-tested
+### The creator roster — Instagram reels, reached through YouTube
 
-Seven on news, four on injuries, inserted **above** the summary block per #95.
+The ask was to pull reels from analytically-minded creators. **Instagram cannot
+supply them and YouTube can**, which is worth understanding before anyone tries
+Meta again.
+
+**What Instagram actually offers**, tested rather than assumed:
+
+- **Business Discovery** (Graph API) returns a named public Business/Creator
+  account's recent media — caption, permalink, timestamp, media type, like and
+  comment counts. Real, and it needs your own IG Business account, a linked
+  Facebook Page, a Meta app, `instagram_basic` + `pages_read_engagement`, and
+  App Review before it leaves dev mode.
+- **oEmbed** needs an app token; unauthenticated it returns `OAuthException`
+  (verified).
+- **Basic Display API** was killed in December 2024.
+- **No transcript, no audio, no OCR, at any tier.**
+
+That last point decides it. In an advanced-stats reel *all* of the value is the
+45 seconds of talking and the chart on screen, and Instagram exposes none of it
+— so the best Meta can give is "Creator X posted, caption: 'Week 3 breakouts
+🔥'". For a project whose rule is that a claim carries its evidence, that is a
+notification, not a source. Scraping is against their ToS and blocked; not done.
+
+**The same cuts are cross-posted as YouTube Shorts, and
+`feeds/videos.xml?channel_id=…` is a public Atom feed with no key, no quota and
+no account.** 15 recent uploads with title, description, link and timestamp.
+That is how the reels get here.
+
+**Atom, not RSS** — entries are `<entry>` and the body is `<media:description>`,
+so `parseRss` next door does not apply and returns zero items against this URL,
+which looks exactly like a quiet channel.
+
+### The roster is the primary filter, and it is a human judgement
+
+`lib/creators.ts`. **Every `channelId` was resolved from the live channel page
+and verified — none guessed.** A wrong id does not error; it quietly serves
+somebody else's videos under the right name, which is family #4 in its purest
+form.
+
+| creator | channel | shape |
+|---|---|---|
+| Joel Smyth | `@JoelSmythFantasy` | chaptered breakdowns, per-player timestamps |
+| Eli Duracell | `@EliDuracell` | short-form, title + hashtags, **no description** |
+| Fantasy Points | `@FantasyPoints` | 19-23 chapters, 17-26 players indexed |
+| Establish The Run | `@EstablishTheRun` | 21-22 chapters, projection-led |
+
+No text classifier separates a careful analyst from a confident one; a person
+who has watched them does. Everything below is a guard against a bad day from a
+good creator, **not** a substitute for the list.
+
+### "Top 5 of a position" is NOT the clickbait signal
+
+The obvious rule — drop ranked listicles — was measured against the roster and
+would have thrown away **Joel Smyth's "Top 50 Fantasy Stats of 2026", "2026
+Fantasy WR Rankings" and "2026 Fantasy RB Rankings"**, where the rankings *are*
+the work, plus **Eli Duracell's "Top 5 Offensive Coordinators for Fantasy"**,
+which names Shanahan, Coen and Taylor in its own hashtags. That is family #2
+arriving somewhere new: a rule firing on most of the population it was meant to
+sort.
+
+The real signal is **a withheld payoff**. "Top 5 RBs" that names them is a list;
+"Top 5 RBs — stay tuned for number one" is a curiosity gap. So `WITHHOLDING`
+reads for deferral and manufactured shock and says nothing about structure.
+"Insane", "crazy" and "must watch" were considered and left out — ordinary
+emphasis in this genre, and including them would repeat the over-firing that
+got the listicle rule rejected.
+
+**It fires on 0 of 60 real videos, and that is proved rather than asserted.**
+A rule that never fires is indistinguishable from one that cannot, so
+`check:news` exercises it both ways on 11 cases — 5 synthetic clickbait titles
+it must drop, 6 real roster titles (every "Top N") it must keep. **11/11.** Zero
+live hits is the expected reading for a curated roster.
+
+### Scoring depth from the text does not work, and was removed
+
+The first version scanned descriptions for named metrics — target share, yards
+per route, EPA, expected points, twelve families — on the theory that naming
+four of them describes method. **It returned zero signals for all 60 videos,
+including the deepest.**
+
+A YouTube description is not an argument, it is a table of contents:
+
+```
+#fantasyfootball 00:00 Intro 00:24 Emeka Egbuka 00:47 DK Metcalf
+01:45 CIN WRs 02:38 Jaylen Waddle … 14:15 James Cook
+```
+
+The analysis is in the audio, which nothing exposes. Shipping it anyway would
+have printed an empty "signals" row under every video — a measurement that
+measured nothing while looking like it had (family #6).
+
+**What the data does offer is better than what was attempted.** That chapter
+list is a timestamped index of exactly which players a video covers — 26 of them
+on a Fantasy Points preseason review — and it is a fact, not a grade. So the
+depth reading is structural: how many players the creator sat down and indexed.
+A 21-chapter breakdown and a 40-second Short are different objects and the count
+says which, without pretending to rank either.
+
+### Creators take a different route through classification
+
+Curated creators **skip the relevance veto**. That veto exists to sort an open
+wire where anything can turn up; a creator already vouched for by a human would
+only ever collect false negatives from it. What replaces it is the clickbait
+check, plus a floor: **if no category matches, a roster video is `analysis`,
+never `general`** — curation already settled the relevance question `general`
+exists to express doubt about.
+
+`fileItem()` in `scripts/ingest-news.ts` is the ONE place this is decided, called
+by both the live pull and the archive re-file. They were briefly two paths doing
+one job, which is how `verdict()` and `buildCase()` came to disagree on 17 rows
+(#86).
+
+**A creator video is categorised on its TITLE ALONE.** Running the classifier
+over the description filed "The RBs We're Drafting (and Fading) in 2026" and
+"2026 Fantasy Football Rankings" under **roster move**, because the word "sign"
+appears in a sponsor line thirty lines down. The title is the video; everything
+after it is packaging.
+
+### Three attribution fixes the creator feed forced
+
+- **Hashtags are player names, and the resolver could not see them.** Short-form
+  subjects arrive as `#jamescook`, `#amonrastbrown` — the prose scan looks for
+  "James Cook" and finds nothing, so the creator whose entire feed is short-form
+  contributed nothing attributed. `hashtagNames()` extracts them; they match
+  `players.normalized_name` directly, which is stored space-free already, so a
+  hashtag is the same shape as the key by construction.
+- **A resolved mention is now stored under the player's canonical display
+  name**, not the raw string. It was rendering chips reading "amonrastbrown",
+  and because the row key is `(news_id, raw_name)` an item naming a man in both
+  a hashtag and its prose stored him **twice, as two different people**.
+  Canonicalising fixes the display and collapses the duplicate at once.
+- **An unresolved hashtag is dropped, not recorded as a miss.** An ESPN athlete
+  tag is the publisher asserting a person; a hashtag is our own guess. Six head
+  coaches — `#kyleshanahan`, `#benjohnson`, `#seanmcvay` — were being filed as
+  unresolved *players*, reporting our speculation as the feed's failure.
+  `RawNewsItem.athletes[].speculative` marks the difference. Unresolved names
+  went 6 → **0**.
+
+### Where it surfaces
+
+A **Creators only** switch beside the category chips — deliberately its own axis
+rather than a category, because "who said it" is not "what kind of thing is it":
+a creator's injury video is still injury news. The creator's name replaces the
+source label, with their roster note on hover, and the row takes the accent
+hairline.
+
+**It is a pointer, never a signal.** Nothing here reaches a projection, a tag or
+the board — it is `analysis`, the category that already meant "somebody else's
+fantasy read". Blending an opinion into a calibrated number is the mistake
+`calibrate:startable` exists to prevent, and rendering one at the same weight as
+a measurement is family #6.
+
+**A short-form item is a pointer twice over**: with no description, all the app
+knows is that Eli Duracell posted about James Cook against Ashton Jeanty. That
+is worth surfacing and is not analysis this tool has read, which is why
+`Creator.shortForm` is recorded.
+
+Two audit checks: `every creator on the roster is still returning videos` (soft
+— a renamed or dead channel looks exactly like a quiet fortnight) and the
+existing veto guard.
+
+**Not tried, and why:** TikTok's read API is academic-access or own-account
+only, the same wall as Instagram. Bluesky's public API works with no auth
+(verified — `searchActors` returns fantasy accounts) and is the obvious next
+source if the roster wants a text feed.
+
+### Twelve audit checks, all negative-tested
+
+Eight on news, four on injuries, inserted **above** the summary block per #95.
 They skip rather than fail when the tables are empty, because a board built
 before the news ingest ever ran is a valid board — a check that fails because a
 feature is unused trains the reader to ignore the audit.
@@ -2460,13 +2628,329 @@ Deliberately **not** wired into `npm run refresh`: that rebuilds the board from
 the market and usage, and news touches neither. Nothing on the board or the wire
 reads these tables.
 
+## Why conviction was low, and what fixed it
+
+Reported as "very few players are tagged as high" alongside "the analysis is
+rather surface level". **They were one problem.** Confidence is `high` at three
+calibrated findings and `medium` at two, and the average case carried **1.14
+measured points**. There was nothing to be confident with.
+
+| | before | after |
+|---|---|---|
+| measured points per case | **1.14** | **2.79** |
+| for + against per case | 2.8 | 4.7 |
+| high / medium / low | **10 / 50 / 128** | **54 / 86 / 48** |
+
+**The threshold was not touched.** Every one of those extra points is a
+calibrated finding that already existed, was already computed, and was already
+rendered on the scouting panel one scroll below the case. The argument the page
+leads with simply never used them.
+
+**What the case was missing.** Everything above the new block argues from
+VOLUME, PRICE or AVAILABILITY: how much work he gets, what he costs, whether he
+is on the field. **None of it said whether he is any good with the ball.** So
+first downs per game (the strongest independent signal in the project), EPA per
+touch, yards per route, yards per carry, yards after contact and the five-filter
+WR1 screen were all absent from the one surface a reader actually reads.
+
+Rules on the new points, so the case does not become a list of everything:
+
+- a metric with a **null weight is dead for that position and is not evidence**;
+- `measured` needs a partial of 0.15+, matching the strength definitions used
+  everywhere else;
+- **only the extremes argue** — 75th percentile and up for, 25th and down
+  against. The middle is already covered by the opportunity line, and four more
+  middling points would bury the two that matter (#88);
+- at most three per side, best partial first, so a strong signal is not outvoted
+  by a longer list of weak ones.
+
+Puka Nacua's case went from four points to eight, five of them measured: first
+downs 100th percentile, EPA per touch 99th, first-down rate 89th, and all five
+filters of the WR1 screen.
+
+## TE and QB were wearing receiver correlations
+
+Found while wiring the above, and it had to be fixed first or the new points
+would have propagated it. The weight on every advanced tile was
+`isBack ? rbNumber : wrNumber`, so **tight ends and quarterbacks were shown the
+receiver's partial** — and the tile quotes that partial as its justification, so
+the claim was explicit rather than implied.
+
+`calibrate:advanced` had never measured them. It does now:
+
+| metric | WR | RB | TE | QB |
+|---|---|---|---|---|
+| first downs/game | .387 | .338 | **.320** | **.360** |
+| first-down rate | .184 | .209 | **.154** | **DEAD .055** |
+| EPA per touch | .189 | .261 | **.140** | **DEAD .113** |
+| yards per route | .152 | .257 | .034 absorbed | — |
+
+Two of those change what the page should say rather than just the digits. **A
+quarterback's first-down rate is dead at .055** and was advertising .184, i.e.
+"real independent signal". And **his strongest signal by far is EPA per dropback
+at .460**, stronger than his own volume control at .418, and it was not a tile
+at all.
+
+A null weight now renders as `no measurable signal for QBs`. A blank is honest;
+a borrowed number is not.
+
+## Why 23 board players had no outlook
+
+22 are correct and unavoidable: **rookies and players who missed all of last
+season**. The comparables model matches on the role a player held, and a man who
+has held none has no historical analogue. Jeremiyah Love, Carnell Tate, Jordyn
+Tyson, Tank Dell, Jonathon Brooks.
+
+**The 23rd was a bug.** Chase Brown, ADP 15, 17 games, a 61% rush share, and no
+outlook. `appearances` is built from `snap_counts` and read with `?? 0`, so
+**"we have no snap data for this man" became "he did not play"** and the games
+floor dropped him. nflverse's 2025 snap counts carry **two rows for the entire
+Cincinnati backfield** against 23 for their quarterbacks and 82 for their
+receivers, so the gap is upstream.
+
+Absence read as a measured zero is family #6. A player with no snap rows *at
+all* now falls back to weeks with a stat line.
+
+**This does not reintroduce #40.** That bug was about preferring the better
+source: `player_usage.games` counts games with a stat line, so a healthy backup
+who caught one pass looks like an injured starter. That argument still holds and
+snap counts still win wherever they exist. It says nothing about what to do when
+the source is *absent*. Only whole-season absence falls back — a player with
+three snap rows genuinely played three games, and taking the larger of the two
+would restore #40 for everyone.
+
+Recovered 6 players, outlooks 511 → 517.
+
+## No em dashes in text the reader sees
+
+313 of them in rendered strings. The em dash as a dramatic pause is the loudest
+tell of machine-written prose, and ordinary English uses a comma, a colon or a
+full stop for the same job.
+
+`scripts/strip-emdash.ts` does the mechanical pass: a following capital means
+two independent clauses and takes a full stop, anything else is an aside and
+takes a comma. **Two things it must never touch** — the bare `—` every table
+prints for a missing value, which is data rather than prose, and doc comments,
+which no reader sees. Down to **zero in user-facing strings**; the ~560 in
+comments are left alone.
+
+It cannot judge rhythm, so it introduced a few comma splices which were fixed by
+hand. Read the output of any future run.
+
+**Two more ordinal bugs found on the way**, both the #66/#79 family:
+`Top ${100 - usageGrade}%` printed **"Top 0%"** for a 100th-percentile player,
+which reads as a rounding error rather than as the best at his position; and the
+VALUE derivation printed **"the 43th best at the position"**. `ordinal()` is now
+exported from `case.ts` rather than copied a third time.
+
+## Compare — two players, the same questions asked of both
+
+`/compare`. The brief was "show me which one to take **without biasing me**",
+which is a sharper constraint than it sounds: the easy build adds up some
+metrics, prints a winner and a percentage, and is confidently wrong in a way the
+reader cannot audit. Three rules stop that.
+
+**1. Every row is ranked within position before the two are compared.** A
+receiver's 24% target share and a back's 24% rush share are not the same fact,
+and their raw point totals are not comparable at all — a quarterback outscores a
+receiver by a hundred points a season while being worth less, because twelve
+quarterbacks start and forty-three receivers do. Percentile against his own
+position is the one number that survives the crossing.
+
+**2. A row too close to call says so.** Gaps under 10 percentile points sit
+inside the noise of the measurement behind them and are drawn level and grey.
+On a mid-round comparison that is the most common outcome, and the design shows
+it rather than hiding it.
+
+**3. The verdict carries its own band's predictive power.** Two players going in
+round eight are close to indistinguishable on this evidence (draft order ranks
+at .066 there against .518 in rounds 1-3), and a tool drawing two confident bars
+without saying so is lying by omission. The band note is on every comparison.
+
+Only rows with a **measured** weight vote, and each votes by its own weight, so
+first downs cannot be outvoted by three descriptive lines. The lean needs a
+margin above 0.25 — more than a single strong signal's worth — or it reads
+"too close to call on the evidence", which Nacua against Bijan correctly does.
+
+**The bar is one shared track filled from the centre**, not two bars side by
+side. Two independent bars make a 4-point edge and a 60-point edge look alike; a
+centred difference bar cannot. Same argument as VALUE being a magnitude bar
+rather than a pill (#106).
+
+Three bugs caught in its own first output, worth recording because each is a
+family:
+- **the cost row led backwards** — the earlier pick was "winning" a row about
+  what you pay. Being drafted earlier is what you spend, not what you get, so
+  the cheaper man leads it now, and it carries no weight.
+- **the OUTLOOK row was a stub** printing an em dash for both players on every
+  comparison. A row that never says anything is worse than no row: the reader
+  assumes it failed rather than that it was never wired up.
+- **VONA is ranked on a fixed points scale, not within position**, deliberately.
+  Ranking it within position would erase the finding, since the whole point is
+  that a back's cliff is steeper than a receiver's.
+
+
+### The compare page, second pass
+
+Reported as "looks horrible". The first build was a bare table of bars with the
+verdict stacked above it, which put the conclusion before the case and gave the
+reader nothing to anchor on.
+
+**It is a triptych now: a player card either side, the evidence down the
+middle.** Equal width on purpose. A verdict banner across the top with the
+players beneath would state the conclusion before the argument, which is the
+opposite of how everything else here asks to be read, and the symmetry is the
+point of a page whose brief was "do not bias me".
+
+The cards are the real `ToppsCard`, portrait and all. `cardColumns` and
+`cardSeasons` were private to the player page and are now in `lib/card.ts`,
+because copying them would have been the third time this project kept two
+definitions of one thing and watched them drift (#71, #86).
+
+**Three levels of win indicator**, each answering a different question:
+
+- **per row**, a chevron pointing at whoever took it, in the accent. It is the
+  only saturated mark on the row because it is the row's decision (#104);
+- **per section**, a tally pill in the heading. Sections genuinely disagree —
+  one man often takes the volume rows while the other takes the per-touch ones,
+  and that is the most interesting thing a comparison can show, so a reader
+  should not have to count chevrons to find it;
+- **overall**, a three-column scoreboard of rows taken.
+
+**Rows taken, never a score out of a hundred.** A percentage would be exactly
+the invented precision the brief asked to avoid, and there is no honest
+denominator for it.
+
+**The audit caught a `title=` attribute I had just written** into the weight
+badge, which is the #101 ban. Worth recording as the check working: it was
+added after that rule had been broken three times, and it fired on the fourth
+within minutes of the violation.
+
+### Compare works in season, and the in-season design is counterintuitive
+
+The tool was built for drafting and needed to answer the two questions that
+replace drafting once games start: **who do I claim off the wire**, and **who do
+I start this week**. `lib/pipeline/inseason.ts` is the live read and
+`comparePlayers` switches on `resolveUsageSeason()`, the same helper the wire
+and the usage model already use.
+
+**A DIFFERENT SET OF ROWS, not the same rows with fresher numbers.** An ADP is
+spent and a cost of waiting is meaningless in week 8; half-PPR per game means
+nothing in August. In live mode the value and role blocks are replaced by what
+actually happened, the section headings change with them, and the efficiency and
+age rows carry over because they are true in both worlds.
+
+Live rows: **half-PPR per game · weeks actually startable · points so far ·
+touches and targets per game · snap share · target share · rush share ·
+weighted opportunity · last 3 games · role holding up · weeks since he played.**
+
+**SEASON TO DATE LEADS AND RECENT FORM DOES NOT VOTE.** Every other tool in
+this category leads with last-three-games. Over 22,405 samples
+(`calibrate:recency`) that is worse at every position and every stage: RB .749
+against .730, WR .737 against .711, TE .715 against .693, and the best blend
+puts 0.2 on the recent window for a gain of 0.0007. The last-3 row is shown
+because a manager will want to see it, sits under **risk** rather than under
+production, and is given no weight. That placement is the finding.
+
+**The one exception is honoured and is asymmetric.** A snap-share SPIKE predicts
+nothing — 15 points above his own average returns 6.77 a game against 6.84 for a
+flat role — because a spike is usually somebody else's one-week absence. A
+COLLAPSE is real, costs 1.23 a game, and is the one place a recent window beats
+the season. So there is no `spiked` flag anywhere in the file, only
+`collapsed`, and an audit check enforces that a rising snap share is never
+marked a problem.
+
+**The startable bar is that week's real scoring, not a fixed points total.** A
+12-point week is a startable back some weeks and the 30th in others, so a
+constant would measure league-wide scoring rather than the player.
+
+**Receiving metrics are null for a quarterback, never zero.** A QB's target
+share is 0% by construction and printing it beside a receiver's 24% is family #1
+wearing a percentage.
+
+**Three audit checks, and the second one is the point.** The live path is
+unreachable between February and September, so a check that only asserts "empty
+before week 1" passes all summer while the machinery it guards has never
+executed. The second check runs `buildLiveReads` against the most recent
+completed season and requires it to return a populated, scoring set — it is the
+only thing exercising the code before September. Verified against 2025: 610
+players, McCaffrey at 21.5 a game on a 66% rush share, and the real benchings
+caught as collapses (Flacco 78% to 9%, Wilson 54% to 12%, Davante Adams).
+
+### The rebrand to ChipShip, and the two things not renamed
+
+User-facing text, page titles, the package name and every outbound User-Agent
+now say ChipShip. **Two references deliberately still say nflhelper:**
+
+- **`./data/nflhelper.db`.** Renaming the database path would orphan the
+  existing database, which holds every ingest, calibration and build in the
+  project. It is a filename nobody sees. Change it only alongside an actual file
+  move, and `DB_PATH` already overrides it if that day comes.
+- **the old `localStorage` theme key**, read as a fallback. The key is now
+  `chipship-theme`, but a straight rename would silently discard everyone's
+  saved choice and flash them a white page on the next load. The boot script
+  reads the new key, falls back to the old one, and writes the new one back, so
+  the migration happens once and unnoticed.
+
+### The logo, split across two places because one slot cannot hold it
+
+The lockup is a chip-and-runner mark above "CHIP SHIP / FANTASY FOOTBALL
+ANALYTICS" on a white field. Neither half goes into the rail as it is.
+
+**The rail slot is 42px across.** A wordmark whose text is already small at
+1024px wide renders as grey mush at that size, and shrinking a good mark until
+it smudges is not using it. So the rail takes the **mark alone**, cropped from
+the top of the lockup, and the **name is set in type in the topbar** where there
+is width for it. Condensed and letterspaced to echo the block lettering rather
+than imitate it, because a bitmap wordmark would go soft and could not follow
+the theme.
+
+**The white field has to go**, not for taste but because the rail is dark in
+both themes on purpose (it is chrome, and holding it constant gives the eye a
+stable left edge). A white rectangle there would be the brightest thing on the
+page.
+
+`npm run build:logo` does the work with sharp: knocks out the background,
+trims to the real bounds, and emits the mark at two sizes, the full lockup, and
+a favicon. Two details in it are load-bearing:
+
+- **A pixel is cleared only when all three channels are above 236.** The mark
+  contains near-white of its own — the helmet stripe, the ball laces, the cream
+  ring around the chip — and those survive because their creams carry a warm
+  cast, so the blue channel sits well below the red. A single-channel or
+  luminance test would eat them.
+- **Crop generously, then TRIM.** A hand-measured box is wrong the moment the
+  source is re-exported at another size; trim finds the real bounds of whatever
+  survived the background removal.
+
+**The rail degrades rather than breaking.** The image is stacked over a "CS"
+monogram with an `onError` that hides the image, so a missing or
+still-generating logo shows two clean letters instead of a broken-image glyph.
+Same fallback the player card uses for a missing portrait (#106). It also means
+the app is correct before the logo file exists at all.
+
+**The accent plate behind the old monogram is gone.** A letter needed a filled
+square to read as a mark; a real logo does not, and boxing it would put a
+coloured rectangle around artwork that already has its own silhouette (#104).
+
 ## Where things stand right now (end of the last session)
-- **`/news` and `/injuries` are live.** News holds 147 items from 3 free
-  sources: **72 reach the tab across all 32 teams**, 51 are held back by the
-  relevance veto as not fantasy news, 24 matched no rule. Filed by rule with the
-  deciding phrase kept, and searchable by player, team or word. Injuries holds 459 skill-position players across all 32
-  teams, 458 with ESPN's written fantasy read. Both are in the rail. Neither
-  touches the board — nothing on `/` or `/waiver` reads them.
+- **`/news` and `/injuries` are live.** News holds 298 items from 7 free
+  sources — 3 wires plus a 4-creator YouTube roster: **179 reach the tab across
+  all 32 teams**, 72 held back by the relevance veto, 47 matched no rule.
+  Searchable by player, team or word, with a **Creators only** switch. Injuries
+  holds 459 skill-position players across all 32 teams, 458 with ESPN's written
+  fantasy read. Both are in the rail. Neither touches the board — nothing on
+  `/` or `/waiver` reads them.
+- **`/compare` is live and season-aware**: any two players, every row ranked
+  within position, level rows drawn level, and the draft band's own predictive
+  power on every verdict. It switches to an in-season read (half-PPR per game,
+  real usage, snap trend) the week games start, with season-to-date leading and
+  recent form deliberately not voting.
+- **Case confidence is 54 high / 86 medium / 48 low** (was 10 / 50 / 128), from
+  **2.79 measured points per case** against 1.14. The threshold did not move;
+  the calibrated indicators were wired into the case.
+- **No em dashes in user-facing text.** 313 removed, placeholders and comments
+  untouched. `npm run strip:emdash` re-runs it.
 - Board: **185 rows** after an ADP re-pull (was 179).
 - Depth-chart rooms are cut to the men who can hold or take a role — **QB 3-4 ·
   RB 4-7 · WR 6-8 · TE 2-4**, down from 10-15 (#102), and every direction arrow
@@ -2477,7 +2961,7 @@ reads these tables.
   wire, 194 clearing the evidence floor. **All 511 now get a range** — the 41
   with no close analogue get it with the midpoint marked rough (#97).
 - Every board row carries a **case**: one verdict, the argument for and against, each point stamped `measured` / `weak` / `fact` / `unknown`.
-- `npm run audit` runs **114 checks** (103 board + 11 news/injury): 113 pass, 1 warning — and the exit code now
+- `npm run audit` runs **118 checks** (103 board + 12 news/injury + 3 in-season): 117 pass, 1 warning — and the exit code now
   actually covers all of them (#95). The warning is market coverage: the ADP
   re-pull added six board players the 10-day-old prop feed has never priced, so
   only 39% of WR/RB carry a full market read. It clears when the props are

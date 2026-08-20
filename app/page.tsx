@@ -25,7 +25,7 @@ export default function Page() {
       {/*
         The hero states what the board IS in one line and what it is made of in
         four numbers. The old page opened with a run-on subtitle carrying six
-        facts in a row, which is a paragraph pretending to be a header — nothing
+        facts in a row, which is a paragraph pretending to be a header, nothing
         in it was findable at a glance.
       */}
       <section className="hero">
@@ -90,7 +90,7 @@ export default function Page() {
             {/*
               This used to say those players were "listed to inherit work that
               has already left their team". Measured across more than a thousand
-              cases, the next man up gains nothing on average — teams sign and
+              cases, the next man up gains nothing on average, teams sign and
               draft replacements rather than promoting.
             */}
             <strong>{wire.meta.qualified}</strong> undrafted players held a real role last season,

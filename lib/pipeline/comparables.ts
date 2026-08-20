@@ -144,7 +144,7 @@ export interface Outlook {
   hitRate: number;
   /** Share who finished as a positional top-12 season. */
   breakoutRate: number;
-  /** Share who fell below half of replacement — the true busts. */
+  /** Share who fell below half of replacement, the true busts. */
   bustRate: number;
   /**
    * Share who never took an offensive snap the following season.
@@ -217,7 +217,7 @@ type Feature = (typeof FEATURES)[number];
  * stale numbers to them.
  */
 export interface Bands {
-  /** Median neighbour distance at this position — the "genuine match" line. */
+  /** Median neighbour distance at this position, the "genuine match" line. */
   close: number;
   /** Past this a comparable is worth showing but not weighing. */
   loose: number;
@@ -724,7 +724,7 @@ function wq(sorted: Array<{ v: number; w: number }>, p: number): number {
   return sorted[sorted.length - 1]!.v;
 }
 
-/** Interquartile range — a spread that the mass of backups at zero cannot squash. */
+/** Interquartile range, a spread that the mass of backups at zero cannot squash. */
 function iqr(values: number[]): number {
   if (values.length < 4) return sd(values);
   const s = [...values].sort((a, b) => a - b);

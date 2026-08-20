@@ -58,7 +58,7 @@ export interface PlayerCase {
   against: CasePoint[];
   /** Material, and measured to carry no direction. Never counted either way. */
   unknowns: CasePoint[];
-  /** How much the model can back the view — evidence quality, not player quality. */
+  /** How much the model can back the view, evidence quality, not player quality. */
   confidence: 'high' | 'medium' | 'low';
   confidenceWhy: string;
 }
@@ -70,7 +70,7 @@ const pct = (v: number | null | undefined) => (v === null || v === undefined ? '
  * and the argument for fixing it is not typography: a page that argues for its
  * own rigour and then prints "3th" loses the reader for every decimal after it.
  */
-function ordinal(n: number): string {
+export function ordinal(n: number): string {
   const rem100 = n % 100;
   if (rem100 >= 11 && rem100 <= 13) return `${n}th`;
   return `${n}${['th', 'st', 'nd', 'rd'][n % 10] ?? 'th'}`;
@@ -101,7 +101,7 @@ function vacancyTeam(i: TagInput): string {
  * difference rather than quoting it uniformly.
  */
 function priceReliability(adp: number): { strength: Strength; note: string } {
-  if (adp <= 36) return { strength: 'measured', note: 'the strongest stretch on this board — the draft order predicts about 4 times better in the first 60 picks (0.47) than through the middle rounds (0.10)' };
+  if (adp <= 36) return { strength: 'measured', note: 'the strongest stretch on this board, the draft order predicts about 4 times better in the first 60 picks (0.47) than through the middle rounds (0.10)' };
   if (adp <= 72) return { strength: 'weak', note: 'still worth something here, though weaker than the first three rounds' };
   if (adp <= 120) return { strength: 'unknown', note: 'the middle rounds, where this and every other signal here weakens' };
   return { strength: 'weak', note: 'slight this late, though the late rounds do recover some signal' };
@@ -136,7 +136,7 @@ export function buildCase(i: TagInput): PlayerCase {
   const profile = lateProfile(i);
   if (profile.hit) {
     forPts.push({
-      text: `A short NFL record and real draft capital — pick ${i.draftPick} — going at ${i.adp.toFixed(0)}`,
+      text: `A short NFL record and real draft capital, pick ${i.draftPick}, going at ${i.adp.toFixed(0)}`,
       strength: 'measured',
       basis: `This is the one late-round shape that actually works: ${profile.rate}. A high pick who has not had his chance yet is a different bet from a career backup, and by this point in the draft the market has stopped telling them apart.`,
     });
@@ -157,7 +157,7 @@ export function buildCase(i: TagInput): PlayerCase {
       basis:
         `Players whose role ran a full step ahead of their price beat that price by a clear margin; those a ` +
         `step behind fell short of it by roughly twice as much. It pointed the right way in all 4 ` +
-        `seasons checked, but it is a mild effect — a lean, not a reason to reach.`,
+        `seasons checked, but it is a mild effect, a lean, not a reason to reach.`,
     });
   }
 
@@ -197,7 +197,7 @@ export function buildCase(i: TagInput): PlayerCase {
   }
   if (i.expectedGames !== null && i.expectedGames > 13 && i.expectedGames < 16) {
     forPts.push({
-      text: `Ordinary availability — projects for ${i.expectedGames.toFixed(1)} games`,
+      text: `Ordinary availability, projects for ${i.expectedGames.toFixed(1)} games`,
       strength: 'fact',
       basis: `What his own injury history suggests he will play. Close enough to a full season to be neither a plus nor a minus.`,
     });
@@ -205,7 +205,10 @@ export function buildCase(i: TagInput): PlayerCase {
 
   if (i.usageGrade !== null && i.usageGrade >= 80) {
     forPts.push({
-      text: `Top ${100 - i.usageGrade}% of ${i.position}s on measured opportunity`,
+      /* A 100th-percentile player printed "Top 0%", which reads as a rounding
+         error rather than as the best in his position. The floor of 1 says what
+         is meant; the same slip in reverse is guarded below. */
+      text: `Top ${Math.max(1, 100 - i.usageGrade)}% of ${i.position}s on measured opportunity`,
       strength: 'measured',
       basis:
         `How much work his coaches actually gave him, ranked against his own position. The model behind ` +
@@ -217,7 +220,7 @@ export function buildCase(i: TagInput): PlayerCase {
 
   if (i.expectedGames !== null && i.expectedGames >= 16) {
     forPts.push({
-      text: `Durable — projects for ${i.expectedGames.toFixed(1)} games`,
+      text: `Durable, projects for ${i.expectedGames.toFixed(1)} games`,
       strength: 'measured',
       basis: `Staying healthy is one of the most repeatable things a player does. Someone who missed 4+ games last year misses time again about 73% of the time; someone who stayed healthy, about 41%.`,
     });
@@ -247,25 +250,25 @@ export function buildCase(i: TagInput): PlayerCase {
       strength: 'measured',
       basis:
         `Players being paid for more than they actually did on the field fell short of that price, and the ` +
-        `further ahead the price ran the further they fell — a full step ahead cost about twice what ` +
+        `further ahead the price ran the further they fell, a full step ahead cost about twice what ` +
         `half a step did. Consistent across all 4 seasons, but mild: a reason for caution, not a bust.`,
     });
   }
 
   if (i.usageGrade !== null && i.usageGrade <= 25 && i.adp <= 72) {
     against.push({
-      text: `Bottom ${i.usageGrade}% of ${i.position}s on measured opportunity, at a price that assumes otherwise`,
+      text: `Bottom ${Math.max(1, i.usageGrade)}% of ${i.position}s on measured opportunity, at a price that assumes otherwise`,
       strength: 'measured',
       basis:
         `Where his workload ranks against his own position, from a model scored on seasons it never saw ` +
         `(about 58% of the way to explaining a receiver's next year). Paying an early pick for someone ` +
-        `his coaches were not feeding is the most common shape of a disappointing pick — a lean, not a verdict.`,
+        `his coaches were not feeding is the most common shape of a disappointing pick, a lean, not a verdict.`,
     });
   }
 
   if (i.expectedGames !== null && i.expectedGames <= 13) {
     against.push({
-      text: `Availability risk — projects for only ${i.expectedGames.toFixed(1)} games`,
+      text: `Availability risk, projects for only ${i.expectedGames.toFixed(1)} games`,
       strength: 'measured',
       basis: `A player who missed 4+ games misses time again about 73% of the time. One who stayed healthy does, about 41% of the time. It is one of the most repeatable things in this data.`,
     });
@@ -284,7 +287,7 @@ export function buildCase(i: TagInput): PlayerCase {
     against.push({
       text: `Turns ${i.age} this season`,
       strength: 'weak',
-      basis: `Receivers past 30 have returned a little less than their draft slot normally pays, and younger ones a little more. Deliberately NOT applied to running backs — the same test on backs comes out the other way round, so charging them for age would be inventing a penalty.`,
+      basis: `Receivers past 30 have returned a little less than their draft slot normally pays, and younger ones a little more. Deliberately NOT applied to running backs, the same test on backs comes out the other way round, so charging them for age would be inventing a penalty.`,
     });
   }
 
@@ -292,7 +295,7 @@ export function buildCase(i: TagInput): PlayerCase {
     against.push({
       text: `Scored ${i.tdOverExpected!.toFixed(1)} touchdowns above what his red-zone volume supports, without the role to repeat it`,
       strength: 'weak',
-      basis: `Scoring more touchdowns than your goal-line workload supports is mostly luck, and luck does not repeat. Only counted against him when the workload is not carrying him anyway — genuinely elite players outscore their volume because they are elite.`,
+      basis: `Scoring more touchdowns than your goal-line workload supports is mostly luck, and luck does not repeat. Only counted against him when the workload is not carrying him anyway, genuinely elite players outscore their volume because they are elite.`,
     });
   }
 
@@ -300,19 +303,112 @@ export function buildCase(i: TagInput): PlayerCase {
     against.push({
       text: `New play caller${i.currentCoach ? ` (${i.currentCoach})` : ''}`,
       strength: 'weak',
-      basis: `Backs who stayed put lost about twice as much ground under a new coach as under the same one. Applied to running backs only — the same test barely moves for receivers and not at all for tight ends, because a new staff rebuilds a backfield more than it rebuilds a route tree.`,
+      basis: `Backs who stayed put lost about twice as much ground under a new coach as under the same one. Applied to running backs only, the same test barely moves for receivers and not at all for tight ends, because a new staff rebuilds a backfield more than it rebuilds a route tree.`,
     });
+  }
+
+  /* --------------------------------------------- what he does per opportunity
+   *
+   * Everything above this point argues from VOLUME, PRICE or AVAILABILITY: how
+   * much work he gets, what it costs, whether he is on the field. None of it
+   * says whether he is any good with the ball.
+   *
+   * That was the gap behind two complaints at once — cases reading thin, and
+   * 68% of the board sitting at LOW confidence. The average case carried
+   * **1.14 measured points**, and `high` needs three. Meanwhile every one of
+   * these metrics was already calibrated, already computed and already on the
+   * scouting panel one scroll down. The argument simply never used them.
+   *
+   * Rules, so this does not become a list of everything:
+   *
+   *  - a metric with a NULL weight is dead for this position and is not
+   *    evidence at all. This is what stops a quarterback's first-down rate
+   *    entering as a measured point on a correlation of .055.
+   *  - `measured` needs a partial of 0.15+; below that it is `weak`, matching
+   *    the strength definitions used everywhere else here.
+   *  - only the extremes argue. The 40th to 70th percentile is the middle of
+   *    his own position and is left to the opportunity line, which already
+   *    covers "he is unremarkable" — adding four more middling points would
+   *    bury the two that matter (#88).
+   *  - at most three, best partial first, so a strong signal is not outvoted by
+   *    a longer list of weak ones.
+   */
+  const perTouch = (i.indicators ?? [])
+    .filter((ind) => ind.weight !== null && ind.percentile !== null)
+    .sort((a, b) => (b.weight ?? 0) - (a.weight ?? 0));
+
+  const strongAt = perTouch.filter((ind) => (ind.percentile ?? 0) >= 75).slice(0, 3);
+  const weakAt = perTouch.filter((ind) => (ind.percentile ?? 100) <= 25).slice(0, 3);
+
+  for (const ind of strongAt) {
+    forPts.push({
+      text: `${ind.label} of ${ind.display}, ${ordinal(ind.percentile!)} percentile among ${i.position}s`,
+      strength: (ind.weight ?? 0) >= 0.15 ? 'measured' : 'weak',
+      basis: ind.detail,
+    });
+  }
+
+  for (const ind of weakAt) {
+    against.push({
+      text: `${ind.label} of ${ind.display}, only ${ordinal(ind.percentile!)} percentile among ${i.position}s`,
+      strength: (ind.weight ?? 0) >= 0.15 ? 'measured' : 'weak',
+      basis: ind.detail,
+    });
+  }
+
+  /*
+   * The five-filter receiver screen, which is the strongest single screen here
+   * and was not in the case at all.
+   *
+   * Both directions are worth stating and they are not symmetric. Clearing all
+   * five is a three-fold lift on a startable season. Missing one or two is not
+   * a condemnation — Jefferson in 2022 missed only his quarterback's ranking
+   * and Chase in 2024 missed 2.27 against a 2.30 line — so a near miss is
+   * reported as a near miss, with the filters he failed named.
+   */
+  if (i.screenPassed !== null && i.screenPassed !== undefined) {
+    if (i.screenClears) {
+      forPts.push({
+        text: 'Clears all five filters of the WR1 screen',
+        strength: 'measured',
+        basis:
+          'Under 30, a quarter of his team’s targets, 2.3 yards per route, a top-11 scoring ' +
+          'offence and a top-10 quarterback. Receivers clearing all five went on to average 228 ' +
+          'points the following season with 62% finishing top-12, against 142 points and 20% for ' +
+          'receivers who held a real role and did not clear. A three-fold lift, and the strongest ' +
+          'single screen in this project.',
+      });
+    } else if (i.screenPassed >= 3) {
+      forPts.push({
+        text: `Clears ${i.screenPassed} of the five WR1 filters${i.screenMissing?.length ? `, missing on ${i.screenMissing.join(' and ')}` : ''}`,
+        strength: 'weak',
+        basis:
+          'The five are a profile rather than a law: of the WR1 seasons on record, Jefferson in ' +
+          '2022 missed only on his quarterback ranking 12th rather than top-10, and Chase in 2024 ' +
+          'missed only on 2.27 yards per route against a 2.30 line. Three of five is the shape ' +
+          'without the confirmation.',
+      });
+    } else if (i.screenPassed <= 1) {
+      against.push({
+        text: `Clears only ${i.screenPassed} of the five WR1 filters`,
+        strength: 'weak',
+        basis:
+          'Age, target share, yards per route, the offence around him and his quarterback. ' +
+          'Failing four or five of them does not make a bust, but it puts him a long way from ' +
+          'the profile that produced a 62% top-12 rate.',
+      });
+    }
   }
 
   /* ------------------------------------------------------------- the UNKNOWNS */
 
   if ((i.vacated ?? 0) >= 0.15) {
     unknowns.push({
-      text: `${pct(i.vacated)} of ${vacancyTeam(i)} volume from last season has left the roster — and that is not a forecast in either direction`,
+      text: `${pct(i.vacated)} of ${vacancyTeam(i)} volume from last season has left the roster, and that is not a forecast in either direction`,
       strength: 'unknown',
       basis:
         `It is tempting to assume the next man up inherits this. Checked across more than a thousand ` +
-        `cases, he does not — teams sign and draft replacements instead of promoting, and a ` +
+        `cases, he does not, teams sign and draft replacements instead of promoting, and a ` +
         `first-round rookie walks straight into a fifth of the targets or half the carries. Individual ` +
         `players do swing hard in both directions: Jaxon Smith-Njigba went from 24% of his team's ` +
         `targets to 36%, DJ Moore went from 27% down to 16%, and both had a fifth of the offence ` +
@@ -325,7 +421,7 @@ export function buildCase(i: TagInput): PlayerCase {
       text: `His price looks ${i.slotGap > 0 ? 'cheap' : 'expensive'} by ${Math.round(Math.abs(i.slotGap))} points, and through the middle rounds that reading means little`,
       strength: 'unknown',
       basis:
-        `Through the middle rounds this number stops meaning much — and so does everything else. The ` +
+        `Through the middle rounds this number stops meaning much, and so does everything else. The ` +
         `draft order predicts about a fifth as well here as it does in round one, and last season's ` +
         `points do the same. It also reads positive for four players in five down here, because what ` +
         `picks historically return falls away faster than projections do. Judge him on his role.`,
@@ -339,8 +435,8 @@ export function buildCase(i: TagInput): PlayerCase {
       basis:
         `The same fitted model re-run at the share vector he would hold, with the probability from ` +
         `exact enumeration over who is available. It is a conditional, not an expectation: it says ` +
-        `how big the branch is, not that it pays. Note this is IN-SEASON replacement — a starter ` +
-        `going down in October — which is a different mechanism from the offseason departures ` +
+        `how big the branch is, not that it pays. Note this is IN-SEASON replacement, a starter ` +
+        `going down in October, which is a different mechanism from the offseason departures ` +
         `measured in \`calibrate:opportunity\`, and is not covered by that null result.`,
     });
   }
@@ -386,7 +482,7 @@ export function buildCase(i: TagInput): PlayerCase {
     }
   } else if (forHeft > againstHeft + 1) {
     headline = profile.hit
-      ? 'Worth a late pick on profile — the strongest late-round shape there is'
+      ? 'Worth a late pick on profile, the strongest late-round shape there is'
       : i.adp <= 36
         ? 'The evidence backs the price and then some'
         : i.vorp !== null && i.vorp < 0
@@ -400,7 +496,7 @@ export function buildCase(i: TagInput): PlayerCase {
     tone = againstHeft >= 4 ? 'bust' : 'caution';
   } else if (forHeft === 0 && againstHeft === 0) {
     headline = unknowns.length
-      ? 'Nothing here points either way — read the unknowns'
+      ? 'Nothing here points either way, read the unknowns'
       : 'No strong read in either direction';
     tone = 'unknown';
   } else {
@@ -425,7 +521,7 @@ export function buildCase(i: TagInput): PlayerCase {
     confidence = 'low';
     confidenceWhy =
       measuredCount === 0
-        ? 'Nothing calibrated in this project applies to him — everything below is descriptive.'
+        ? 'Nothing calibrated in this project applies to him, everything below is descriptive.'
         : 'Only one calibrated finding applies to him; the rest is description.';
   }
 

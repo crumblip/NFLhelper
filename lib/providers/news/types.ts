@@ -26,7 +26,21 @@ export interface RawNewsItem {
    * `espnId` is the valuable field — it joins to `players.espn_id` directly and
    * skips name matching entirely.
    */
-  athletes?: Array<{ name: string; espnId?: string | null }>;
+  athletes?: Array<{
+    name: string;
+    espnId?: string | null;
+    /**
+     * True when this name is a GUESS rather than the source naming somebody.
+     *
+     * An ESPN athlete tag is an assertion: the publisher says the article is
+     * about this person, so failing to resolve it is a real gap worth
+     * recording. A hashtag pulled out of a creator's title is our own
+     * speculation — `#kyleshanahan` and `#benjohnson` are head coaches, and
+     * filing them as unresolved players reports our guessing as the feed's
+     * failure. Speculative names that do not resolve are dropped instead.
+     */
+    speculative?: boolean;
+  }>;
   /** Team abbreviations the source itself tags. Already normalised by the adapter. */
   teams?: string[];
 }
@@ -41,12 +55,12 @@ export interface NewsFetch {
 
 /** A row on the injury report, before resolution. */
 export interface RawInjury {
-  /** The publisher's athlete id where it has one — ESPN's, here. */
+  /** The publisher's athlete id where it has one. ESPN's, here. */
   espnId: string | null;
   name: string;
   position: string | null;
   team: string | null;
-  /** The publisher's own word. Not normalised — see the schema comment. */
+  /** The publisher's own word. Not normalised, see the schema comment. */
   status: string;
   bodyPart: string | null;
   /** The beat report. */

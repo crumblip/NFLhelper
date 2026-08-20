@@ -8,7 +8,7 @@ const TEAMS = Number(process.env.LEAGUE_TEAMS ?? 12);
 const SEASON = Number(process.env.SEASON ?? 2026);
 
 export const metadata = {
-  title: 'Waiver wire — NFLhelper',
+  title: 'Waiver wire · ChipShip',
   description: 'Undrafted players with a role or a path to one',
 };
 
@@ -17,7 +17,7 @@ export default function WaiverPage() {
 
   return (
     <main className="wrap">
-      <h1>Waiver wire — {meta.season}</h1>
+      <h1>Waiver wire, {meta.season}</h1>
       <p className="sub">
         {FORMAT} · {TEAMS}-team ·{' '}
         {meta.live ? (
@@ -40,7 +40,7 @@ export default function WaiverPage() {
       {meta.availabilitySource === 'yahoo' ? (
         <div className="notice">
           <strong>Availability is live from {meta.leagueName ?? 'your Yahoo league'}.</strong> These
-          are the players nobody in your league holds — <strong>{meta.rosteredCount}</strong> are
+          are the players nobody in your league holds, <strong>{meta.rosteredCount}</strong> are
           rostered and excluded, whatever the national market thinks of them.{' '}
           {meta.onWaivers > 0 ? (
             <>
@@ -52,7 +52,7 @@ export default function WaiverPage() {
             <>
               {meta.unresolvedOwnership} rostered{' '}
               {meta.unresolvedOwnership === 1 ? 'player' : 'players'} could not be matched to this
-              tool&apos;s player index — still excluded, by name rather than by id.
+              tool&apos;s player index, still excluded, by name rather than by id.
             </>
           ) : null}
         </div>
@@ -60,7 +60,7 @@ export default function WaiverPage() {
         <div className="notice">
           <strong>Availability is a national estimate, not your league.</strong> No drafted Yahoo
           league is connected, so &ldquo;available&rdquo; here means &ldquo;not taken in the average
-          national draft&rdquo;. That is wrong in both directions for any real league — a player
+          national draft&rdquo;. That is wrong in both directions for any real league, a player
           drafted everywhere but cut in yours never appears, and a player nobody drafts nationally
           but somebody stashed shows as free all season. Connect your league on the{' '}
           <a href="/league">League</a> page to replace the estimate with the actual rosters.
@@ -71,7 +71,7 @@ export default function WaiverPage() {
         <strong>A different question from the draft board.</strong> On the board every player has a
         price, so the question is whether he is worth it. Off the board there is no price, so the
         question becomes whether a role is opening up for him. That is why these are sorted by
-        available volume ahead of anything else — the profile behind almost every pickup that
+        available volume ahead of anything else, the profile behind almost every pickup that
         mattered is a backup on a team whose work has moved, not a player who suddenly improved.
       </div>
 
@@ -80,7 +80,7 @@ export default function WaiverPage() {
           <>
             <strong>Reading week {meta.week}.</strong> The usage behind every grade is{' '}
             <strong>{Math.round(meta.currentSeasonWeight * 100)}% this season</strong>, the rest last
-            season — current-year usage overtakes the prior year after two games, so it takes over
+            season, current-year usage overtakes the prior year after two games, so it takes over
             fast. Opportunity has switched too: it now measures the share of each team&apos;s work
             held by players who <strong>did not play last week</strong>, rather than who left in the
             offseason. A player whose own snap share is falling is flagged and cannot be a priority

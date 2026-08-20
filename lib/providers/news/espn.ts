@@ -34,7 +34,7 @@ const BASE = 'https://site.api.espn.com/apis/site/v2/sports/football/nfl';
 const NEWS_LIMIT = 50;
 
 async function getJson(url: string): Promise<any> {
-  const res = await fetch(url, { headers: { 'User-Agent': 'nflhelper/1.0' } });
+  const res = await fetch(url, { headers: { 'User-Agent': 'chipship/1.0' } });
   if (!res.ok) throw new Error(`${res.status} ${res.statusText} for ${url}`);
   return res.json();
 }

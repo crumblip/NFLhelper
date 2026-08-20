@@ -15,7 +15,7 @@ import { normalizeTeam } from '../match/normalize';
 
 /** Inside the opponent's 20-yard line. */
 const RED_ZONE = 20;
-/** Inside the 5 — the goal-line role specifically. */
+/** Inside the 5, the goal-line role specifically. */
 const GOAL_LINE = 5;
 
 export interface RedZoneTotals {

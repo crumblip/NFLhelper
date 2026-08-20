@@ -7,7 +7,8 @@ import {
   type Support,
 } from '../../../lib/player';
 import WeeklyBars from './weekly';
-import ToppsCard, { type ToppsSeason } from '../../ui/topps-card';
+import ToppsCard from '../../ui/topps-card';
+import { cardColumns, cardSeasons } from '../../../lib/card';
 import { Tip } from '../../ui/tip';
 import { teamOf, teamStyle, positionColor } from '../../../lib/teams';
 import { buildRead } from '../../../lib/pipeline/read';
@@ -49,7 +50,7 @@ function sourceNote(source: string, basis: string | null): string {
     if (own) return `Converted from the receiving-yards line at his own ${own} yds/catch`;
     const posMatch = basis?.match(/^position-ypr:([\d.]+):(\w+)/);
     if (posMatch) {
-      return `Converted at the ${posMatch[2]} median of ${posMatch[1]} yds/catch — no history of his own`;
+      return `Converted at the ${posMatch[2]} median of ${posMatch[1]} yds/catch, no history of his own`;
     }
     return 'Converted from another market line';
   }
@@ -94,34 +95,6 @@ const snapPct = (v: number | null | undefined) =>
   v === null || v === undefined ? '—' : `${(v * 100).toFixed(0)}%`;
 
 /** The four stat columns that describe each position on the card back. */
-function cardColumns(position: string): Array<[string, string]> {
-  if (position === 'QB') {
-    return [['PASS', 'YDS'], ['PASS', 'TD'], ['RUSH', 'YDS'], ['RUSH', 'TD']];
-  }
-  if (position === 'RB') {
-    return [['RUSH', 'ATT'], ['RUSH', 'YDS'], ['REC', ''], ['TOTAL', 'TD']];
-  }
-  return [['TGT', ''], ['REC', ''], ['REC', 'YDS'], ['REC', 'TD']];
-}
-
-function cardSeasons(position: string, context: SeasonContext[]): ToppsSeason[] {
-  return context.map((c) => {
-    const base = { season: c.season, games: c.games, points: c.fantasyPointsHalf };
-    if (position === 'QB') {
-      return { ...base, a: c.passingYards, b: c.passingTds, c: c.rushingYards, d: c.rushingTds };
-    }
-    if (position === 'RB') {
-      return {
-        ...base,
-        a: c.carries,
-        b: c.rushingYards,
-        c: c.receptions,
-        d: (c.rushingTds ?? 0) + (c.receivingTds ?? 0),
-      };
-    }
-    return { ...base, a: c.targets, b: c.receptions, c: c.receivingYards, d: c.receivingTds };
-  });
-}
 
 /**
  * How much the neighbourhood can carry, and what that costs.
@@ -140,7 +113,7 @@ const SUPPORT_NOTE: Record<Support, { label: string; cls: string; detail: string
     cls: 'k-role',
     detail:
       'Most of the forty seasons behind this are genuine matches for his role and production. ' +
-      'Backtested, reads like this land closest to what actually happened — mean error around 33 ' +
+      'Backtested, reads like this land closest to what actually happened, mean error around 33 ' +
       'points for a back and 28 for a receiver.',
   },
   fair: {
@@ -156,7 +129,7 @@ const SUPPORT_NOTE: Record<Support, { label: string; cls: string; detail: string
     detail:
       'Few of the forty seasons genuinely resemble him, so the list is padded with the least ' +
       'dissimilar available. Backtested, the middle number roughly doubles in error here (RB 65.6 ' +
-      'against 33.5) while the range stays honest — read the spread, not the midpoint.',
+      'against 33.5) while the range stays honest, read the spread, not the midpoint.',
   },
 };
 
@@ -403,9 +376,9 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
       ? // No close analogue quotes the SPREAD and never the midpoint. The card
         // is one sentence with no room for a caveat, and the midpoint is the
         // half of the reading the backtest says not to trust.
-        `No close historical profile — the least-unlike roles spanned ${outlook.floor.toFixed(0)}–${outlook.ceiling.toFixed(0)} half-PPR points.`
+        `No close historical profile, the least-unlike roles spanned ${outlook.floor.toFixed(0)}–${outlook.ceiling.toFixed(0)} half-PPR points.`
       : `${outlook.n} similar seasons, ${outlook.fromSeason}–${outlook.toSeason}, went on to a median of ` +
-        `${outlook.median.toFixed(0)} half-PPR points — ${outlook.medianPpg.toFixed(1)} a game.`
+        `${outlook.median.toFixed(0)} half-PPR points, ${outlook.medianPpg.toFixed(1)} a game.`
     : null;
 
   const blurb = value
@@ -426,7 +399,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
         ]
           .filter(Boolean)
           .join(' ')
-      : 'No market and no measured role — shown for reference only.';
+      : 'No market and no measured role, shown for reference only.';
 
   return (
     <main
@@ -513,7 +486,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
 
             This replaced a flat list of tags as the primary read. Tags were
             peers, so Matthew Golden carried GEM and NO UPSIDE at the same time
-            with nothing on the page to say which one it meant — two claims from
+            with nothing on the page to say which one it meant, two claims from
             two evidence bases of completely different quality, rendered as two
             identical chips. Here there is exactly one verdict and everything
             else is argument, so two points disagreeing is the case working
@@ -524,7 +497,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
             calibration in this project backs it and the hover quotes the number,
             "weak" means a real effect too small to lean on, "fact" is
             description, and "unknown" means it was measured and carries no
-            direction at all — vacated volume being the whole of that category.
+            direction at all, vacated volume being the whole of that category.
           */}
           {value?.playerCase && (
             <section className="card pcase">
@@ -601,7 +574,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
                       ? 'Market and usage combined'
                       : value.signal === 'partial'
                         ? 'Partial market, leaning on usage'
-                        : 'Usage only — no betting lines'}
+                        : 'Usage only, no betting lines'}
                     .
                   </>
                 }
@@ -629,7 +602,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
                 note="Points above a freely available player."
                 explain={
                   <>
-                    Projected points minus what a free {header.position} is worth —{' '}
+                    Projected points minus what a free {header.position} is worth,{' '}
                     {value.replacement === null ? '—' : value.replacement.toFixed(0)} points, the best one
                     sitting on nobody&rsquo;s roster in a {TEAMS}-team league. It is the board&rsquo;s
                     sort order because it is the one number that compares positions fairly: 250 points from
@@ -672,14 +645,14 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
                 explain={
                   <>
                     His percentile among every graded {header.position} on what the usage model
-                    projects from his role alone — target or rush share, red-zone and goal-line work,
+                    projects from his role alone, target or rush share, red-zone and goal-line work,
                     first downs, team scoring, age. 0 is the worst role at the position and 100 the
                     best. This ignores the market entirely, which is the point: where it disagrees
                     with the price is where the interesting picks are.
                     {header.position === 'QB' && (
                       <>
                         {' '}
-                        Read quarterback grades with more caution — the position&rsquo;s model
+                        Read quarterback grades with more caution, the position&rsquo;s model
                         explains 36% of next-season points against roughly 55% elsewhere.
                       </>
                     )}
@@ -699,9 +672,9 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
                   <>
                     Three independent facts are compared: where the depth chart lists him, where his
                     production ranked in his own position room last season, and how much time he
-                    misses. Where they agree, certainty is high. Where they disagree — listed second
+                    misses. Where they agree, certainty is high. Where they disagree, listed second
                     but out-produced the man above him, or listed first with a rookie drafted behind
-                    him — the job is contested, and that disagreement is the number. It is not a
+                    him, the job is contested, and that disagreement is the number. It is not a
                     projection of his points; it is the chance the rest of this page is describing
                     the right role.
                   </>
@@ -737,7 +710,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
                     <>
                       Of the {outlook.n} historical seasons whose role, scoring opportunity,
                       production and age most resembled his, this share went on to finish top-12 at
-                      the position the following year — a player you start every week. Closer
+                      the position the following year, a player you start every week. Closer
                       matches count for more. It is a frequency from real seasons, not a model
                       output: {pct0(outlook.bustRate)} of the same group returned less than half of
                       replacement, and {pct0(outlook.vanishRate)} never played again.
@@ -745,7 +718,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
                   ) : (
                     <>
                       No historical season resembles his closely enough to draw a rate from. That is
-                      a finding about him rather than missing data — see the comparables section
+                      a finding about him rather than missing data, see the comparables section
                       below.
                     </>
                   )
@@ -770,7 +743,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
               {/*
                 The number a waiver claim actually turns on: what comparable
                 roles produced per game. The board's projected-points tile is
-                meaningless here — there is no market on an undrafted player —
+                meaningless here, there is no market on an undrafted player,
                 but the comparables are not, and they were being withheld from
                 the only page where this question gets asked.
               */}
@@ -778,7 +751,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
                 The number an undrafted player was missing entirely. A grade of
                 84 says he holds a good role for his position; "projects like
                 pick 66, and costs a waiver claim" is the decision. This could
-                not be shown until the usage scale was unified — the wire's own
+                not be shown until the usage scale was unified, the wire's own
                 doc comment said so, because subtracting an actual-points
                 replacement level from a regressed projection produced nonsense.
               */}
@@ -798,7 +771,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
                 <div className="stat-note">
                   {waiver.equivalentPick === null ? (
                     <>
-                      He projects below anything the draft curve covers — it runs to pick 200,
+                      He projects below anything the draft curve covers, it runs to pick 200,
                       and nobody is drafted lower than that. Not &ldquo;like pick 200&rdquo;: off
                       the end of the scale entirely, which is the normal state of a backup.
                       {waiver.vorp !== null && ` He is ${Math.abs(waiver.vorp).toFixed(0)} points below replacement in his current role.`}
@@ -811,7 +784,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
                         ? `${waiver.vorp.toFixed(0)} points above replacement`
                         : `${Math.abs(waiver.vorp).toFixed(0)} below replacement`}
                       . That is what pick {waiver.equivalentPick.toFixed(0)} has returned
-                      historically — and he is free.
+                      historically, and he is free.
                     </>
                   )}
                 </div>
@@ -823,7 +796,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
                 </div>
                 {/*
                   The tile IS the midpoint, so with no close analogue it stays an
-                  em dash — that is the half of the reading the backtest breaks.
+                  em dash, that is the half of the reading the backtest breaks.
                   The note points at the range below rather than implying there
                   is nothing to read, which is what it used to do.
                 */}
@@ -942,8 +915,8 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
             <p className="legend" style={{ marginTop: 'var(--s3)' }}>
               Every arrow names the fact behind it, in the row.{' '}
               <strong>↓ losing ground</strong> means either that somebody listed below him took more
-              of <em>this team&rsquo;s</em> work last season, or — for the man listed first, who is
-              the only one with a job to lose — that his own games or age say so, with the figure
+              of <em>this team&rsquo;s</em> work last season, or, for the man listed first, who is
+              the only one with a job to lose, that his own games or age say so, with the figure
               given. <strong>↑ gaining</strong> is the mirror: he took more of the work than
               somebody listed above him, or the man <em>directly</em> ahead is the fragile one.{' '}
               <strong>→ holding</strong> is most of a depth chart and should read that way.
@@ -955,7 +928,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
               guessing a direction from it is how a receiver read &ldquo;losing ground&rdquo; to a
               team-mate who had never played beside him.{' '}
               <strong>No real role</strong> means under 8% of the position&rsquo;s work, or a share
-              measured over fewer than four games — a share is computed over the weeks a man
+              measured over fewer than four games, a share is computed over the weeks a man
               appeared, so one relief appearance can read as a large share of nothing.
             </p>
             <p className="legend">
@@ -964,12 +937,12 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
                 The alternative was a fifteen-man camp roster, where a seventh
                 back costs the same attention as the starter.
               */}
-              The room is cut to the men who can hold or take a role — measured at four deep for
+              The room is cut to the men who can hold or take a role, measured at four deep for
               quarterbacks, five for backs, six for receivers and three for tight ends, which is
               where a listing stops carrying information. Anyone who held a real share last season,
               or who is being drafted, is kept however deep the camp chart lists him. Shares are each
               man&rsquo;s {SEASON - 1} usage on whichever team he was with, so a room can total over
-              100% when someone arrived from elsewhere — those carry the team they were earned at.
+              100% when someone arrived from elsewhere, those carry the team they were earned at.
             </p>
             {role.reasons.length > 0 && (
               <p className="caveat warn">{role.reasons.join(' · ')}</p>
@@ -984,7 +957,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
           <SectionHead title="Why he is not on the board" />
           <section className="card">
             <p className="body">
-              There is no ADP for him, so there is no price to judge — the board’s frame of value
+              There is no ADP for him, so there is no price to judge, the board’s frame of value
               against cost does not apply. What is left is the question the waiver wire asks: what
               was his role, and is work opening up ahead of him.
             </p>
@@ -996,7 +969,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
             {waiver.notes.length > 0 && <p className="caveat warn">{waiver.notes.join(' · ')}</p>}
             {!waiver.qualified && (
               <p className="caveat">
-                Below the evidence floor — too little involvement or too few games to judge him
+                Below the evidence floor, too little involvement or too few games to judge him
                 either way. That is not a verdict, it is the absence of one.
               </p>
             )}
@@ -1017,7 +990,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
           <section className="card">
             <p className="body">
               VALUE is the number the board sorts on, and it is the end of a chain rather than a
-              judgement. Each row below is one step of that chain — what it added, what the running
+              judgement. Each row below is one step of that chain, what it added, what the running
               total became, and why the step exists at all. If you disagree with the answer, this is
               where to find the assumption you disagree with.
             </p>
@@ -1046,7 +1019,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
 
                     {/*
                       The usage step opens into the model's own arithmetic. Each
-                      input times its fitted weight, in points — so "his target
+                      input times its fitted weight, in points, so "his target
                       share is 24%" becomes "which is worth 31 points of this".
                       A coefficient without the multiplication is not an
                       explanation, it is a second number to take on faith.
@@ -1098,7 +1071,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
             <p className="legend">
               Click any step to open it. The percentages are shares of his team&rsquo;s work; the
               points column is that share multiplied by the weight the model fitted for it, which is
-              multiplied by the weight the model fitted for it — so it reads as "worth N points more
+              multiplied by the weight the model fitted for it, so it reads as "worth N points more
               than a typical {header.position}". Those sum to his distance from the average
               projection, not to the projection itself.
             </p>
@@ -1117,7 +1090,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
             <p className="body">
               Volume says how often he touched the ball. This says what happened when he did, and
               what offence it happened in. Every indicator below was measured against next-season
-              points twice — on its own, and again after removing what{' '}
+              points twice, on its own, and again after removing what{' '}
               {scouting.position === 'RB' ? 'rush' : 'target'} share already explains. Only the
               second number is a second opinion, and it is the one quoted in each hover.
             </p>
@@ -1140,8 +1113,14 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
                     ) : (
                       <div className="scout-note faint">too few at the position to rank</div>
                     )}
+                    {/* A null weight is not a gap to be filled with a neighbour
+                        position's number. It means this metric was measured for
+                        this position and carries nothing, and saying so is the
+                        whole point of measuring it. */}
                     <div className="scout-weight">
-                      predictive weight {ind.weight.toFixed(2)}
+                      {ind.weight === null
+                        ? `no measurable signal for ${header.position}s`
+                        : `predictive weight ${ind.weight.toFixed(2)}`}
                     </div>
                   </div>
                 </Tip>
@@ -1151,20 +1130,20 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
             {/* ------------- the offence around him ------------- */}
             <h3 className="outlook-h">
               The offence he plays in
-              {scouting.environment.team ? ` — ${scouting.environment.team}` : ''}
+              {scouting.environment.team ? `, ${scouting.environment.team}` : ''}
             </h3>
             {/*
               For anyone who moved, this whole block is the RIGHT team measured
               in a season he was not on it. Both halves of that have to be said:
               naming only the team implies he was part of these numbers, and
               naming only the season leaves the reader assuming it is his old
-              one. `team_context` cannot reach further forward — it is built
+              one. `team_context` cannot reach further forward, it is built
               from play-by-play, and 2026 has not been played.
             */}
             {scouting.movedFrom && (
               <p className="legend">
                 He arrives from <strong>{scouting.movedFrom}</strong>, so every number in this
-                block is <strong>{scouting.environment.team}</strong> in {scouting.season} —
+                block is <strong>{scouting.environment.team}</strong> in {scouting.season},
                 the offence he is joining, measured the season before he joined it. His own
                 production above was earned at {scouting.movedFrom}.
               </p>
@@ -1219,7 +1198,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
                 </div>
                 <div className="stat-note">
                   Pass rate over expected. Positive means he throws more than the situation calls
-                  for. Measured as no help to a projection — shown as context, not signal.
+                  for. Measured as no help to a projection, shown as context, not signal.
                 </div>
               </div>
               <div className="stat">
@@ -1244,11 +1223,11 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
                   {/*
                     The tile is labelled with the team because the name alone is
                     unfalsifiable to a reader who does not already know where the
-                    player is — which is exactly the reader this tile is for.
+                    player is, which is exactly the reader this tile is for.
                     Jahan Dotson read "Nick Sirianni" for a season he will spend
                     in Atlanta, and nothing on the tile made that checkable.
                   */}
-                  Who called the plays there in {scouting.season}, from play-by-play — the head
+                  Who called the plays there in {scouting.season}, from play-by-play, the head
                   coach rather than the coordinator, since nflverse publishes no coordinator table.
                   {scouting.movedFrom
                     ? ' He was not in this building last season, and a coaching change costs a running back about 12 points, so treat a new room as a real unknown.'
@@ -1264,7 +1243,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
                 </div>
                 <div className="stat-note">
                   Mean share of carries this coach&rsquo;s top back has taken. Concentration follows
-                  the coach — it repeats at r=0.337 when he stays and only r=0.107 when a team
+                  the coach, it repeats at r=0.337 when he stays and only r=0.107 when a team
                   changes coach. Two to five seasons each, so read it as a lean.
                 </div>
               </div>
@@ -1272,7 +1251,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
                 Both blocking numbers are shown and neither feeds a projection,
                 for opposite reasons. Run blocking was measured and does not
                 predict RB scoring at all. Pass protection DOES predict QB
-                scoring — but it is absorbed by offence EPA, which the model
+                scoring, but it is absorbed by offence EPA, which the model
                 already carries, so adding it buys 0.004 of out-of-sample R².
               */}
               <div className="stat">
@@ -1301,7 +1280,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
                     ? 'No data.'
                     : `${(scouting.environment.sackRateAllowed * 100).toFixed(1)}% of dropbacks sacked. `}
                   Real for quarterbacks (0.28 after usage) but absorbed by offensive EPA, which the
-                  projection already uses — so it explains the number rather than moving it.
+                  projection already uses, so it explains the number rather than moving it.
                 </div>
               </div>
             </div>
@@ -1310,7 +1289,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
             {scouting.screen && (
               <>
                 <h3 className="outlook-h">
-                  The WR1 profile — {scouting.screen.passed} of 5
+                  The WR1 profile, {scouting.screen.passed} of 5
                 </h3>
                 <div className="screen">
                   {scouting.screen.filters.map((f) => (
@@ -1327,7 +1306,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
                       <strong>He clears all five.</strong> Receivers who did averaged{' '}
                       <strong>228</strong> half-PPR points the following season with{' '}
                       <strong>62%</strong> finishing top-12, against 142 points and 20% for
-                      receivers who held a real role and did not — a three-fold lift in the
+                      receivers who held a real role and did not, a three-fold lift in the
                       probability of a startable season, and the strongest single screen in this
                       tool.
                     </>
@@ -1336,7 +1315,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
                       Of the five WR1 seasons on record here, three cleared all five filters.
                       Jefferson 2022 missed only on his quarterback ranking 12th rather than
                       top-10; Chase 2024 missed only on 2.27 yards per route against a 2.30 line.
-                      So this describes the archetype well and the cutoffs are not a law — read{' '}
+                      So this describes the archetype well and the cutoffs are not a law, read{' '}
                       <strong>{scouting.screen.passed} of 5</strong> as a gradient, and check which
                       one is missing.
                     </>
@@ -1388,7 +1367,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
                   </div>
                 </div>
                 <p className="legend">
-                  <strong>Shown, not scored — and here is why.</strong> This is run{' '}
+                  <strong>Shown, not scored, and here is why.</strong> This is run{' '}
                   <em>direction</em>, not blocking scheme; nflverse charts no zone/gap flag, so
                   true scheme data would need PFF or SIS. More to the point, it was tested and it
                   does not predict. A back&rsquo;s per-carry edge outside over interior does not
@@ -1397,7 +1376,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
                   Matching that edge to his next team&rsquo;s tendency returned nothing: the
                   best-fit third scored <strong>147.5</strong> the following season against{' '}
                   <strong>146.7</strong> for the worst-fit third. The league premise is unstable
-                  too — outside runs beat interior by 0.16 and 0.11 yards in 2021–22, then lost by
+                  too, outside runs beat interior by 0.16 and 0.11 yards in 2021–22, then lost by
                   0.11 and 0.15 in 2023–24. It is real description of how he is used, and it is not
                   a forecast.
                 </p>
@@ -1415,8 +1394,8 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
         This used to be two branches: a player whose nearest historical season
         sat past his position's no-analogue band got a comparison list and no
         range, everyone else got both. That put Puka Nacua, Jaxon Smith-Njigba,
-        Christian McCaffrey and Rashee Rice — four of the twelve most expensive
-        players in the draft — on a visibly different panel from the rest, so a
+        Christian McCaffrey and Rashee Rice, four of the twelve most expensive
+        players in the draft, on a visibly different panel from the rest, so a
         reader starting at the top of the board met the exception before the
         rule and read it as a missing feature.
 
@@ -1424,14 +1403,14 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
         `calibrate:comparables` now replicates the shipped gate and buckets every
         backtested season either side of it: a remote neighbourhood breaks the
         MIDPOINT and not the RANGE. Mean error on the median roughly doubles at
-        running back (43 to 80) while interval coverage holds or runs wide — 0.89
+        running back (43 to 80) while interval coverage holds or runs wide, 0.89
         at receiver against a 0.60 target, on the largest suppressed group and
         the position 11 of 13 picks come from. Same shape the closeShare buckets
         found, and the same conclusion the file header already drew: report
         support, read the spread, do not suppress the range.
 
         The RATES are a different claim on the same neighbourhood and were not
-        tested here, so they stay withheld — as do the ranked percentiles (#93).
+        tested here, so they stay withheld, as do the ranked percentiles (#93).
       */}
       {outlookDetail && (
         <>
@@ -1445,7 +1424,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
                 <strong>Nothing in the record looks much like him.</strong> Across every{' '}
                 {header.position} season from {outlook!.fromSeason} to {outlook!.toSeason}, his
                 single closest match sits further away than a typical {header.position}&rsquo;s{' '}
-                <em>middling</em> one — {outlook!.nearestDistance.toFixed(2)} against{' '}
+                <em>middling</em> one, {outlook!.nearestDistance.toFixed(2)} against{' '}
                 {outlook!.bands.noAnalogue.toFixed(2)} on the same scale. That is a finding about
                 him rather than a gap in the data, and it is why no hit or bust rate is quoted for
                 him: those are claims about a group he does not belong to. The range below is
@@ -1460,7 +1439,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
                 {/*
                 One framing, once. The bust bar is now replacement itself, so
                 "cleared replacement" and "busted" are the same measurement with
-                the sign flipped — and this page was printing both, a few inches
+                the sign flipped, and this page was printing both, a few inches
                 apart, as though they were two facts. The board column is called
                 BUST, so bust is the wording everywhere.
                 */}
@@ -1483,7 +1462,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
             */}
             <p className="legend">
               The pool ends at {outlook!.toSeason} because a season only teaches something once the
-              following one has been played — so {outlook!.toSeason} is the newest profile with an
+              following one has been played, so {outlook!.toSeason} is the newest profile with an
               answer attached, and what these seasons went on to do runs from{' '}
               {outlook!.outcomeFromSeason} through <strong>{outlook!.outcomeToSeason}</strong>, the
               most recent completed season.
@@ -1496,7 +1475,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
                   {pct0(outlook!.closeShare)} genuine matches
                 </span>
               </Tip>
-              <Tip content={`Profiled on ${outlookDetail.profileGames} games. Shares are stable from small samples — a four-game rush share predicts the next season's at r=0.919 — but points per game is noisier, so a short profile widens the range rather than sharpening it.`}>
+              <Tip content={`Profiled on ${outlookDetail.profileGames} games. Shares are stable from small samples, a four-game rush share predicts the next season's at r=0.919, but points per game is noisier, so a short profile widens the range rather than sharpening it.`}>
                 <span className="tag k-coverage" tabIndex={0} style={{ cursor: "help" }}>
                   profiled on {outlookDetail.profileSeason}, {outlookDetail.profileGames} games
                 </span>
@@ -1513,7 +1492,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
               season total is that number plus an injury history nobody is
               buying.
             */}
-            <h3 className="outlook-h">Per game — what a start is worth</h3>
+            <h3 className="outlook-h">Per game, what a start is worth</h3>
             <OutlookRange
               floor={outlook!.floorPpg}
               median={outlook!.medianPpg}
@@ -1543,8 +1522,8 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
                 <strong>Read the width, not the middle.</strong> The forty seasons behind this bar
                 are the least dissimilar available rather than genuine matches, and that damages the
                 two ends of the reading differently. Checked against 74 seasons whose following year
-                is already known, the middle number roughly doubles in error — which is why it is
-                drawn faint — while the floor-to-ceiling spread still contained what actually
+                is already known, the middle number roughly doubles in error, which is why it is
+                drawn faint, while the floor-to-ceiling spread still contained what actually
                 happened about as often as it does for an ordinary profile, and for receivers rather
                 more often than that. Seventy-four seasons is a small sample and running backs were
                 the one position that disagreed, so read the band as a rough width and treat his own
@@ -1566,7 +1545,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
 
               It listed the six nearest historical seasons by player and showed
               what each did the following year. The RANGE above is the useful
-              half of that machinery — it is a distribution of outcomes, and it
+              half of that machinery, it is a distribution of outcomes, and it
               is what the backtest actually validates. The list was six rows of
               other men's names, which invites reading one analogy as a forecast
               ("he is the next Rhamondre Stevenson") when the model is making no
@@ -1653,7 +1632,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
                         )}
                       </td>
                       <td className="muted">
-                        against the best {header.position} expected to last 24 picks — a snake turn
+                        against the best {header.position} expected to last 24 picks, a snake turn
                       </td>
                     </tr>
                   )}
@@ -1664,7 +1643,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
                       <td className="muted">
                         {value.dropToNext >= 0
                           ? `${value.dropToNext.toFixed(0)} points behind him`
-                          : `${Math.abs(value.dropToNext).toFixed(0)} points ahead of him — the board has them in the wrong order`}
+                          : `${Math.abs(value.dropToNext).toFixed(0)} points ahead of him, the board has them in the wrong order`}
                       </td>
                     </tr>
                   )}
@@ -1685,8 +1664,8 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
               <p className="caveat">
                 The startable share is this projection <em>restated</em>, not a second opinion on it.
                 Measured over 1,782 season pairs, a player&rsquo;s startable rate carries nothing once
-                his points per game are known — the partial is −0.03 for receivers, 0.06 for backs,
-                0.14 for quarterbacks — and only 4&ndash;5% of players sit more than 15 points of rate
+                his points per game are known, the partial is −0.03 for receivers, 0.06 for backs,
+                0.14 for quarterbacks, and only 4&ndash;5% of players sit more than 15 points of rate
                 away from what their scoring level implies. It is here because a season total hides
                 how a weekly league is played, not because it adds information.
               </p>
@@ -1702,7 +1681,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
               sportsbook posts a line is a fact about the sportsbook, and among
               fourteen columns that describe the player it read as a fifteenth
               one that did. It matters here because it says how much of the
-              projection is a market read and how much is the usage model —
+              projection is a market read and how much is the usage model,
               which is the single largest thing separating two players with the
               same VALUE.
             */}
@@ -1711,12 +1690,12 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
                 ? `No sportsbook posts a season line on him, so this projection is the usage model ` +
                   `alone, pulled ${Math.round((1 - 0.3) * 100)}% toward what his draft slot has ` +
                   `historically returned. That is a statement about the betting market's coverage, ` +
-                  `not about him — 65 board players are in the same position.`
+                  `not about him, 65 board players are in the same position.`
                 : value.signal === 'partial'
                   ? `Sportsbooks price ${Math.round(value.completeness * 100)}% of what he scores, ` +
                     `and the rest is scaled up from the categories they do price. Read it as a ` +
                     `weaker market signal than a fully covered player's.`
-                  : `Fully priced — ${value.marketStats} posted season lines, devigged and scored ` +
+                  : `Fully priced, ${value.marketStats} posted season lines, devigged and scored ` +
                     `under this league's rules. The market carries 60% of his blended projection.`}
             </p>
 
@@ -1733,7 +1712,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
             {value.adpEquivalent !== null && value.adpEquivalent <= 1.01 && (
               <p className="caveat">
                 His implied value sits above the top of the historical curve, which is flat across
-                picks 1–7.5 — eight seasons cannot tell those picks apart. The gap shown is a floor.
+                picks 1–7.5, eight seasons cannot tell those picks apart. The gap shown is a floor.
               </p>
             )}
             {isPasser && value.slotGap > 20 && (
@@ -1753,7 +1732,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
             <strong>No market signal.</strong>
             <p className="muted" style={{ margin: '6px 0 0', fontSize: 13.5 }}>
               No book posts the props that define this position for him, so there is nothing to set
-              against his ADP. The read here rests on usage alone — no projection is invented to
+              against his ADP. The read here rests on usage alone, no projection is invented to
               fill the gap.
             </p>
           </section>
@@ -1806,7 +1785,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
           </table>
         </div>
       ) : (
-        <p className="muted">No regular-season history — likely a rookie.</p>
+        <p className="muted">No regular-season history, likely a rookie.</p>
       )}
 
       {weekly.length > 1 && (
@@ -1822,7 +1801,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
               label={`the weekly pace of a replacement ${header.position} in a ${TEAMS}-team league`}
             />
             <p className="legend">
-              The dashed line is replacement level for his position spread across a season — the
+              The dashed line is replacement level for his position spread across a season, the
               pace a freely available player sets. Green weeks beat it. This is consistency rather
               than a total: two backs can finish on the same points with one of them useless in
               nine weeks out of fifteen, and that difference decides games.
@@ -1913,7 +1892,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
               {gameProps.length > 0 && (
                 <p className="legend">
                   Only regular-season game lines feed a projection. Preseason lines are listed for
-                  completeness but never used — a starter’s August line describes two series.
+                  completeness but never used, a starter’s August line describes two series.
                 </p>
               )}
             </details>

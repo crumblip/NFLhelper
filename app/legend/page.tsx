@@ -114,7 +114,7 @@ export default function LegendPage() {
           >
             <p className="legend-lead">
               In fantasy football you draft real NFL players and their real statistics earn you
-              points. Every player has a price — the pick you spend on him. Separately, sportsbooks
+              points. Every player has a price, the pick you spend on him. Separately, sportsbooks
               take bets on how many yards and touchdowns each player will produce, and because real
               money rides on those numbers they are careful forecasts rather than opinions.
             </p>
@@ -131,7 +131,7 @@ export default function LegendPage() {
                   plain:
                     'On the draft board, VALUE. On the waiver wire, grade plus opportunity. Everything else is supporting detail.',
                   detail:
-                    'VALUE answers “who is worth the most”, which is the order you should draft in. Gap vs ADP answers “who is cheap”, which is a different and secondary question — a cheap player who projects below a freely available replacement is still not worth a pick.',
+                    'VALUE answers “who is worth the most”, which is the order you should draft in. Gap vs ADP answers “who is cheap”, which is a different and secondary question, a cheap player who projects below a freely available replacement is still not worth a pick.',
                 },
                 {
                   term: 'Fantasy points',
@@ -144,7 +144,7 @@ export default function LegendPage() {
                   plain:
                     'The average pick number at which a player is taken across thousands of real drafts. Lower means earlier, which means more expensive.',
                   detail:
-                    'An ADP of 6.6 means he typically goes roughly 7th overall. This is a record of what drafters actually did — not anyone’s opinion of who is good.',
+                    'An ADP of 6.6 means he typically goes roughly 7th overall. This is a record of what drafters actually did, not anyone’s opinion of who is good.',
                 },
                 {
                   term: 'Position',
@@ -171,7 +171,7 @@ export default function LegendPage() {
                 that position, which is what a pick is actually worth.
               </span>
             }
-            lead="The board holds the players who get drafted — the ones the ADP feed prices. Everyone else lives on the waiver wire."
+            lead="The board holds the players who get drafted, the ones the ADP feed prices. Everyone else lives on the waiver wire."
           >
             <Terms
               items={[
@@ -186,7 +186,7 @@ export default function LegendPage() {
                   plain:
                     'Projected points minus replacement level. This is the draft order and the default sort.',
                   detail:
-                    'Sorting by cheapness instead made deep quarterbacks look elite — one showed +54 picks of “value” while projecting three points below a replacement quarterback. Ranking on value over replacement produces a top sixty of 33 receivers and 18 backs with the first quarterback at eighteen, which is how the position actually gets drafted.',
+                    'Sorting by cheapness instead made deep quarterbacks look elite, one showed +54 picks of “value” while projecting three points below a replacement quarterback. Ranking on value over replacement produces a top sixty of 33 receivers and 18 backs with the first quarterback at eighteen, which is how the position actually gets drafted.',
                 },
                 {
                   term: 'Gap vs ADP',
@@ -211,28 +211,28 @@ export default function LegendPage() {
                   plain:
                     'What players drafted at this exact slot have actually returned, on average, across 2018–2025.',
                   detail:
-                    'Busts and season-ending injuries stay in that average on purpose — what a pick is worth has to include the times it returned nothing.',
+                    'Busts and season-ending injuries stay in that average on purpose, what a pick is worth has to include the times it returned nothing.',
                 },
                 {
                   term: 'OUTLOOK',
                   plain:
                     'How players who looked like him turned out, on one scale from bust to breakout. 0 means nearly all of them disappointed, 100 means nearly all of them hit.',
                   detail:
-                    'This was two columns until it was measured. UPSIDE (the share of the 40 closest historical seasons that finished top-12) and BUST (the share worth less than a free player) are 87% mirror images, and neither adds anything once you know the other — the partial correlation of one after the other is .02 and −.05. Two columns of one measurement invite you to count it as two reasons. So they are averaged into one axis, with bust reversed so both halves face the same way, and averaging beats or ties either half in every stretch of the draft that carries signal. IMPORTANT: the underlying rates are only comparable within a position, because "top-12" is a fixed bar held against pools of very different size — 68 receivers on this board against 25 quarterbacks. The axis is therefore a rank against players at his own position going around the same time. WHERE TO USE IT: from round 11 on it is the best column here, about twice as good as the draft order at picking out who returns value. Through the middle rounds it is not worth reading, and neither is anything else — that is a fact about the middle of the draft rather than about this number.',
+                    'This was two columns until it was measured. UPSIDE (the share of the 40 closest historical seasons that finished top-12) and BUST (the share worth less than a free player) are 87% mirror images, and neither adds anything once you know the other, the partial correlation of one after the other is .02 and −.05. Two columns of one measurement invite you to count it as two reasons. So they are averaged into one axis, with bust reversed so both halves face the same way, and averaging beats or ties either half in every stretch of the draft that carries signal. IMPORTANT: the underlying rates are only comparable within a position, because "top-12" is a fixed bar held against pools of very different size, 68 receivers on this board against 25 quarterbacks. The axis is therefore a rank against players at his own position going around the same time. WHERE TO USE IT: from round 11 on it is the best column here, about twice as good as the draft order at picking out who returns value. Through the middle rounds it is not worth reading, and neither is anything else, that is a fact about the middle of the draft rather than about this number.',
                 },
                 {
                   term: 'Closest matches',
                   plain:
                     'On a player’s own page: the real historical seasons whose role, scoring opportunity and age most resembled his, and what those players scored the season AFTER the one being matched.',
                   detail:
-                    'Read a row as one sentence. “Cole Kmet · his 2023 season · 95 scored in 2024” means Kmet’s 2023 profile was the closest match to this player’s current profile, and Kmet then went on to score 95 half-PPR points in 2024. The matched season and the scored season are always one apart, which is the whole point — it is what happened next to players who looked like this. Rows are ranked most similar first and labelled very close / close / loose / distant, because the fifth match is not as informative as the first. Those bands are the quartiles of the actual distance distribution across the board, not round numbers.',
+                    'Read a row as one sentence. “Cole Kmet · his 2023 season · 95 scored in 2024” means Kmet’s 2023 profile was the closest match to this player’s current profile, and Kmet then went on to score 95 half-PPR points in 2024. The matched season and the scored season are always one apart, which is the whole point, it is what happened next to players who looked like this. Rows are ranked most similar first and labelled very close / close / loose / distant, because the fifth match is not as informative as the first. Those bands are the quartiles of the actual distance distribution across the board, not round numbers.',
                 },
                 {
                   term: 'Usage / vs mkt',
                   plain:
                     'Usage is his on-field role scored 0–100 against his position. “vs mkt” is how far that sits from where the betting market ranks him.',
                   detail:
-                    'A large positive means his real role is better than the lines imply — the two opinions disagree, and that disagreement is the interesting part.',
+                    'A large positive means his real role is better than the lines imply, the two opinions disagree, and that disagreement is the interesting part.',
                 },
               ]}
             />
@@ -248,7 +248,7 @@ export default function LegendPage() {
                 <strong>“is he worth it”</strong> to <strong>“is a role opening for him”</strong>.
               </span>
             }
-            lead="The waiver wire covers every undrafted player who had a measurable role — about a thousand players are searchable, against the 179 the draft board can see. Opportunity leads the sort, because the profile behind almost every pickup that mattered is a backup on a team whose work has moved, not a player who suddenly improved."
+            lead="The waiver wire covers every undrafted player who had a measurable role, about a thousand players are searchable, against the 179 the draft board can see. Opportunity leads the sort, because the profile behind almost every pickup that mattered is a backup on a team whose work has moved, not a player who suddenly improved."
           >
             <Terms
               items={[
@@ -257,38 +257,38 @@ export default function LegendPage() {
                   plain:
                     'His role ranked 0–100 against everyone at his position. This is the ranking number on the wire.',
                   detail:
-                    'Built from target share, route share, red-zone share and goal-line share — the measures that carry into the next season. Deliberately not converted into “points above replacement”: the underlying model is regressed toward the positional average, so subtracting a replacement level measured in real points produces nonsense like −61 for a perfectly useful backup.',
+                    'Built from target share, route share, red-zone share and goal-line share, the measures that carry into the next season. Deliberately not converted into “points above replacement”: the underlying model is regressed toward the positional average, so subtracting a replacement level measured in real points produces nonsense like −61 for a perfectly useful backup.',
                 },
                 {
                   term: 'Vacated / opportunity',
                   plain:
                     'The share of the work he competes for that is actually available to him. Carries for backs, targets for receivers and tight ends.',
                   detail:
-                    'Before the season this is offseason departures, net of arrivals — a team that lost its lead back and signed another one has nothing available. Once games are played it switches to the share held by teammates who did not play in the most recent week. A player’s own absence is never counted as his own opportunity.',
+                    'Before the season this is offseason departures, net of arrivals, a team that lost its lead back and signed another one has nothing available. Once games are played it switches to the share held by teammates who did not play in the most recent week. A player’s own absence is never counted as his own opportunity.',
                 },
                 {
                   term: 'One injury away',
                   plain:
                     'What he is worth if the man ahead of him stops playing, multiplied by the chance that happens.',
                   detail:
-                    'The most important number on this page and the one a plain projection cannot show. Every undrafted player projects below replacement in his current role — that is what undrafted means — so ranking on the average sorts by how buried someone is. A backup’s outcome is not a bell curve around that average; it is a coin flip between irrelevant and league-winning, and the mean describes neither. So the usage model is re-run at the share vector he would hold after inheriting the blocker’s carries and goal-line work, and shown beside the probability rather than blended into it. Jaydon Blue reads −64 as an expectation and 156 points if Javonte Williams goes down, at a 20% chance. The chance comes from the blocker’s durability (a player who missed 4+ games misses again 73% of the time), his age past the position curve, and how well he actually played. Nothing here is a new forecast — it is the same fitted model at a different, stated input.',
+                    'The most important number on this page and the one a plain projection cannot show. Every undrafted player projects below replacement in his current role, that is what undrafted means, so ranking on the average sorts by how buried someone is. A backup’s outcome is not a bell curve around that average; it is a coin flip between irrelevant and league-winning, and the mean describes neither. So the usage model is re-run at the share vector he would hold after inheriting the blocker’s carries and goal-line work, and shown beside the probability rather than blended into it. Jaydon Blue reads −64 as an expectation and 156 points if Javonte Williams goes down, at a 20% chance. The chance comes from the blocker’s durability (a player who missed 4+ games misses again 73% of the time), his age past the position curve, and how well he actually played. Nothing here is a new forecast, it is the same fitted model at a different, stated input.',
                 },
                 {
                   term: 'Priority adds',
                   plain:
-                    'A quarter or more of his position’s work has left his team, and he is inside the rotation. Nobody is owed that work — checked across more than a thousand cases, teams sign and draft replacements rather than promoting the next man up — so read this as the shortest distance to a job, not as a job.',
+                    'A quarter or more of his position’s work has left his team, and he is inside the rotation. Nobody is owed that work, checked across more than a thousand cases, teams sign and draft replacements rather than promoting the next man up, so read this as the shortest distance to a job, not as a job.',
                 },
                 {
                   term: 'Rotation depth',
                   plain:
                     'How far down a depth chart a real role still exists: two deep at running back, three at receiver, one at tight end.',
                   detail:
-                    'Taken from base personnel — three receivers are on the field, so a WR3 is a starter; one tight end is, so a TE2 is not. A flat “top two” cutoff looked neutral and was not: every WR1 and WR2 in the league is drafted, so it returned zero receivers while letting twenty-two backup tight ends through on an 8% target share. This is judgment, not backtested.',
+                    'Taken from base personnel, three receivers are on the field, so a WR3 is a starter; one tight end is, so a TE2 is not. A flat “top two” cutoff looked neutral and was not: every WR1 and WR2 in the league is drafted, so it returned zero receivers while letting twenty-two backup tight ends through on an 8% target share. This is judgment, not backtested.',
                 },
                 {
                   term: 'Evidence floor',
                   plain:
-                    'Players under 3% involvement or with too few games are hidden by default. Not a verdict that they are bad — an absence of evidence either way.',
+                    'Players under 3% involvement or with too few games are hidden by default. Not a verdict that they are bad, an absence of evidence either way.',
                   detail:
                     'It catches two different things: blocking fullbacks who genuinely have no offensive role, and players with a one-game sample that is neither good nor bad. In-season the games requirement scales down, because asking for four games in week two would empty the page.',
                 },
@@ -362,7 +362,7 @@ export default function LegendPage() {
               November that roster has been settled for months, and the volume that actually moves
               is moving because somebody is injured. So in-season, opportunity is measured as the
               share of a team’s carries or targets belonging to players who did not appear in the
-              most recent week. No injury report is parsed — a player who recorded no snap did not
+              most recent week. No injury report is parsed, a player who recorded no snap did not
               play, which is the fact the report would be describing.
             </p>
           </Section>
@@ -419,7 +419,7 @@ export default function LegendPage() {
                 <strong>following</strong> season before being allowed in.
               </span>
             }
-            lead="Shares only count the weeks a player actually appeared. Dividing his snaps by a whole season of team plays would charge him for the weeks he was injured — that once made a tight end’s route share read 39% when it was 86% in the games he played."
+            lead="Shares only count the weeks a player actually appeared. Dividing his snaps by a whole season of team plays would charge him for the weeks he was injured, that once made a tight end’s route share read 39% when it was 86% in the games he played."
           >
             <Terms
               items={[
@@ -453,12 +453,12 @@ export default function LegendPage() {
                   term: 'Snap share',
                   plain: 'The share of his team’s offensive plays he was on the field for.',
                   detail:
-                    'Used in-season to detect a role changing. It moves before the touches do — a back who takes over gets the snaps immediately, while the carries can lag a week behind game script.',
+                    'Used in-season to detect a role changing. It moves before the touches do, a back who takes over gets the snaps immediately, while the carries can lag a week behind game script.',
                 },
                 {
                   term: 'Starter share (quarterbacks)',
                   plain:
-                    'The share of his team’s dropbacks he was on the field for — in practice, whether he is the starter.',
+                    'The share of his team’s dropbacks he was on the field for, in practice, whether he is the starter.',
                   detail:
                     'Quarterbacks are measured on their own terms: starter share, rushing volume, red-zone and goal-line carries. Target share is excluded because it is ~0 for every quarterback who has ever played, which says nothing about any of them. Starter share is by far the strongest predictor in the quarterback model at +50 points per standard deviation. Rushing volume is the next: it is what separates a top-five finish from a twelfth on the same passing line.',
                 },
@@ -523,8 +523,8 @@ export default function LegendPage() {
             <p className="legend-lead">
               It would seem obvious to judge a player on touchdowns scored. A running back’s share of
               his team’s red-zone plays predicts next year at <strong>0.72</strong>; his actual
-              touchdown total predicts at <strong>0.63</strong>. Touchdowns carry a lot of luck — a
-              ball bouncing the right way — while <em>who the coach hands the ball to near the end
+              touchdown total predicts at <strong>0.63</strong>. Touchdowns carry a lot of luck, a
+              ball bouncing the right way, while <em>who the coach hands the ball to near the end
               zone</em> is a deliberate decision that repeats. So the tool measures the opportunity,
               not the result.
             </p>
@@ -543,13 +543,13 @@ export default function LegendPage() {
               The standard in-season waiver instinct is to grab whoever’s snap count just jumped.
               Tested across 2018–2025, it does not survive. Players whose recent snap share sat 15
               points or more <em>above</em> their season average went on to score{' '}
-              <strong>6.77</strong> points per game — against <strong>6.84</strong> for players
+              <strong>6.77</strong> points per game, against <strong>6.84</strong> for players
               whose role was flat. No edge at all, and their predictability collapses to r = 0.25. A
               snap spike is usually somebody else’s one-week absence, and it reverts.
             </p>
             <p className="legend-lead">
               The mirror image is real. Players whose recent snap share sat 15 points or more{' '}
-              <em>below</em> their season average scored <strong>5.62</strong> — a genuine loss of{' '}
+              <em>below</em> their season average scored <strong>5.62</strong>, a genuine loss of{' '}
               <strong>1.23</strong> points per game. That is why the wire flags a shrinking role and
               deliberately does not flag a growing one. Symmetry would look tidier and be wrong.
             </p>
@@ -611,7 +611,7 @@ export default function LegendPage() {
                   plain:
                     'How much of his projection came from posted season lines. “% covered” players are missing a category the market prices for their position, so their total is a floor and they are excluded from ranking.',
                   detail:
-                    'Most commonly a running back with no receiving line — worth roughly 77 points, so including him would unfairly rank him last. No projection is invented to fill a gap; a blank is more useful than a fabricated number.',
+                    'Most commonly a running back with no receiving line, worth roughly 77 points, so including him would unfairly rank him last. No projection is invented to fill a gap; a blank is more useful than a fabricated number.',
                 },
                 {
                   term: '+n wk1',
@@ -626,7 +626,7 @@ export default function LegendPage() {
                 {
                   term: '⚠ selection',
                   plain:
-                    'A warning on quarterbacks taken late — their gaps look larger than they are.',
+                    'A warning on quarterbacks taken late, their gaps look larger than they are.',
                   detail:
                     'Books only price quarterbacks expected to start, but the historical comparison includes every quarterback drafted at that slot, many of whom never played. Tested against eight seasons, the tight-end signal held up and this one did not.',
                 },
@@ -652,7 +652,7 @@ export default function LegendPage() {
             <h3>Missing data is not a bad verdict</h3>
             <p className="legend-lead">
               A player with no betting lines is judged on usage alone, and that projection lives on a
-              different scale — the model regresses toward the positional average, so its numbers run
+              different scale, the model regresses toward the positional average, so its numbers run
               about twenty points below real points. It is therefore compared against replacement
               measured on <em>that same scale</em>, not against the real-points figure. Getting this
               wrong charged every uncovered player roughly twenty phantom points and made &ldquo;no
@@ -664,11 +664,11 @@ export default function LegendPage() {
             <p className="legend-lead">
               Four limits worth carrying with you. Only about <strong>69%</strong> of the board has
               season-long betting lines at all. The usage side cannot be proven to add information
-              the betting market does not already have — testing that would need a historical archive
+              the betting market does not already have, testing that would need a historical archive
               of betting lines that does not exist publicly, which is exactly why the two views are
               shown side by side rather than merged into one number that would imply more certainty
               than there is. The <strong>60/40 market-to-usage split</strong> is a judgment call for
-              the same reason. And the thresholds that trigger tags are judgment too — the claims
+              the same reason. And the thresholds that trigger tags are judgment too, the claims
               inside them are calibrated, the cutoffs that fire them are not.
             </p>
           </Section>

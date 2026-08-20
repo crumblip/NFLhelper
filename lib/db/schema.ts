@@ -545,7 +545,7 @@ export const playerOutlook = sqliteTable(
     /** The season being projected INTO. */
     season: integer('season').notNull(),
     position: text('position').notNull(),
-    /** Which season's usage described him — this one when live, else last. */
+    /** Which season's usage described him, this one when live, else last. */
     profileSeason: integer('profile_season').notNull(),
     /** Games behind the profile, so a week-3 read is not read as a full season. */
     profileGames: integer('profile_games').notNull(),
@@ -606,7 +606,7 @@ export const teamContext = sqliteTable(
     season: integer('season').notNull(),
     team: text('team').notNull(),
     games: integer('games').notNull(),
-    /** Actual points scored, from final scores — not a proxy. */
+    /** Actual points scored, from final scores, not a proxy. */
     pointsFor: integer('points_for'),
     /** 1 = highest scoring offence in the league that season. */
     pointsRank: integer('points_rank'),
@@ -619,7 +619,7 @@ export const teamContext = sqliteTable(
     primaryQbShare: real('primary_qb_share'),
     qbEpaDropback: real('qb_epa_dropback'),
     qbEpaRank: integer('qb_epa_rank'),
-    /** Pass rate over expected — how pass-happy the play caller is for real. */
+    /** Pass rate over expected, how pass-happy the play caller is for real. */
     passOe: real('pass_oe'),
     rushEpaPlay: real('rush_epa_play'),
 
@@ -770,7 +770,7 @@ export const playerUsage = sqliteTable(
     targetsPerRoute: real('targets_per_route'),
     adot: real('adot'),
     yacPerReception: real('yac_per_reception'),
-    /** Share of that player's snaps on plays with pre-snap motion — scheme
+    /** Share of that player's snaps on plays with pre-snap motion, scheme
      *  context for the offense, NOT a personal motion rate. nflverse charts
      *  motion at play level with no player attribution. */
     teamMotionRate: real('team_motion_rate'),
@@ -789,7 +789,7 @@ export const playerUsage = sqliteTable(
     rzTargets: integer('rz_targets'),
     /** Player's red-zone touches / team's red-zone plays. */
     rzTouchShare: real('rz_touch_share'),
-    /** Inside the 5 — the goal-line role specifically. */
+    /** Inside the 5, the goal-line role specifically. */
     goalLineCarries: integer('goal_line_carries'),
     goalLineTargets: integer('goal_line_targets'),
     goalLineShare: real('goal_line_share'),
@@ -912,7 +912,7 @@ export const yahooOwnership = sqliteTable(
     status: text('status').notNull(),
     /** Set when status is 'rostered'. */
     teamKey: text('team_key'),
-    /** Which lineup slot the owner has him in — 'BN' means benched, not dropped. */
+    /** Which lineup slot the owner has him in, 'BN' means benched, not dropped. */
     selectedPosition: text('selected_position'),
     /** Yahoo's injury flag: 'Q', 'O', 'IR', 'PUP-R', null when healthy. */
     injuryStatus: text('injury_status'),
@@ -972,7 +972,7 @@ export const yahooOwnership = sqliteTable(
 export const newsItem = sqliteTable(
   'news_item',
   {
-    /** `source:externalId` — stable across re-ingests, which is the dedup. */
+    /** `source:externalId`, stable across re-ingests, which is the dedup. */
     id: text('id').primaryKey(),
     source: text('source').notNull(),
     /** The publisher's own id for the item, before it was namespaced. */
@@ -1029,7 +1029,7 @@ export const newsMention = sqliteTable(
     rawName: text('raw_name').notNull(),
     /** Position from our own registry, not from the feed. */
     position: text('position'),
-    /** Current team — the depth chart's answer, not last season's usage row. */
+    /** Current team, the depth chart's answer, not last season's usage row. */
     team: text('team'),
     /** How the name was matched: 'espn_id' | 'name' | 'team' | 'unresolved'. */
     method: text('method').notNull(),
@@ -1061,7 +1061,7 @@ export const injuryReport = sqliteTable(
   'injury_report',
   {
     source: text('source').notNull(),
-    /** Resolved gsis id, null when unmatched — kept, same reasoning as mentions. */
+    /** Resolved gsis id, null when unmatched, kept, same reasoning as mentions. */
     playerId: text('player_id'),
     rawName: text('raw_name').notNull(),
     espnId: text('espn_id'),
@@ -1072,11 +1072,11 @@ export const injuryReport = sqliteTable(
     status: text('status').notNull(),
     /** Where the injury is, where the feed says. Often 'Undisclosed'. */
     bodyPart: text('body_part'),
-    /** The beat report — a sentence, usually naming a reporter. */
+    /** The beat report, a sentence, usually naming a reporter. */
     detail: text('detail'),
     /** The fantasy read: what it means and who gains. ESPN's longComment. */
     analysis: text('analysis'),
-    /** When the report was filed, epoch ms — not when we fetched it. */
+    /** When the report was filed, epoch ms, not when we fetched it. */
     reportedAt: integer('reported_at'),
     fetchedAt: integer('fetched_at').notNull(),
   },

@@ -32,7 +32,7 @@ export interface ReadInput {
   /** How secure the job is, 0-100. */
   certainty: number | null;
   depthRank: number | null;
-  /** Exactly what dragged role certainty down, as recorded — never inferred. */
+  /** Exactly what dragged role certainty down, as recorded, never inferred. */
   certaintyReasons: string[];
   outlook: Outlook | null;
   archetype: string | null;
@@ -85,7 +85,7 @@ function replacementSentence(i: ReadInput): string | null {
 
   return (
     `His VALUE is negative, and that is a statement about supply rather than about him. ` +
-    `VALUE measures points above ${free} — the man you can have for nothing in a 12-team league — ` +
+    `VALUE measures points above ${free}, the man you can have for nothing in a 12-team league, ` +
     `and that bar sits at ${round(i.replacement)} points for a ${i.position}. ` +
     `At ${round(i.points)} projected he lands ${short} short of it, ` +
     (i.undrafted
@@ -94,10 +94,10 @@ function replacementSentence(i: ReadInput): string | null {
     (i.position === 'QB'
       ? `Quarterbacks run negative more than anyone: one starts, twelve are startable, and the ` +
         `replacement bar is the highest of any position at ${round(i.replacement)}. Most of the ` +
-        `position reads negative here and that is correct — it is why the board puts so few ` +
+        `position reads negative here and that is correct, it is why the board puts so few ` +
         `quarterbacks near the top.`
       : i.undrafted
-        ? `That is the normal state of a backup rather than a mark against him — which is why what ` +
+        ? `That is the normal state of a backup rather than a mark against him, which is why what ` +
           `he is worth if the job opens matters more here than the projection does.`
         : `About half of any draft board reads negative for this reason; it is the definition ` +
           `working, not a fault.`)
@@ -125,7 +125,7 @@ export function buildRead(i: ReadInput): PlayerRead {
   } else if (i.vorp >= 20) {
     headline = 'Comfortably better than what the position gives away for free.';
   } else if (i.vorp >= 0) {
-    headline = 'Barely above replacement — a roster spot, not an advantage.';
+    headline = 'Barely above replacement, a roster spot, not an advantage.';
   } else if (i.vorp >= -25) {
     headline = 'Projects below the free option at his position.';
   } else {
@@ -139,15 +139,15 @@ export function buildRead(i: ReadInput): PlayerRead {
       i.vorp >= 0
         ? `${round(i.vorp)} more than the freely available ${i.position}`
         : `${Math.abs(round(i.vorp))} fewer than the freely available ${i.position}`;
-    let s = `The projection is ${round(i.points)} half-PPR points across a full season — ${cmp}, who is worth ${round(i.replacement)}.`;
+    let s = `The projection is ${round(i.points)} half-PPR points across a full season, ${cmp}, who is worth ${round(i.replacement)}.`;
     if (!i.undrafted && i.adp !== null && i.equivalentPick !== null) {
       const gap = i.adp - i.equivalentPick;
       s +=
         Math.abs(gap) < 8
           ? ` That is about what pick ${i.adp.toFixed(0)} has historically returned, so the price is fair.`
           : gap > 0
-            ? ` Picks that have returned this much have gone around ${i.equivalentPick.toFixed(0)}, and he is available at ${i.adp.toFixed(0)} — roughly ${Math.abs(round(gap))} picks of value.`
-            : ` Picks that have returned this much have gone around ${i.equivalentPick.toFixed(0)}, and he is going at ${i.adp.toFixed(0)} — you are paying about ${Math.abs(round(gap))} picks ahead of the return.`;
+            ? ` Picks that have returned this much have gone around ${i.equivalentPick.toFixed(0)}, and he is available at ${i.adp.toFixed(0)}, roughly ${Math.abs(round(gap))} picks of value.`
+            : ` Picks that have returned this much have gone around ${i.equivalentPick.toFixed(0)}, and he is going at ${i.adp.toFixed(0)}, you are paying about ${Math.abs(round(gap))} picks ahead of the return.`;
     }
     if (i.undrafted && i.equivalentPick !== null) {
       s += ` Nobody drafts him, but that production has historically come off the board around pick ${i.equivalentPick.toFixed(0)}.`;
@@ -171,7 +171,7 @@ export function buildRead(i: ReadInput): PlayerRead {
 
   if (i.signal === 'none') {
     body.push(
-      `No sportsbook posts season props on him, so this is entirely his on-field role — no market ` +
+      `No sportsbook posts season props on him, so this is entirely his on-field role, no market ` +
         `opinion is folded in. That is not a knock: books price the players people bet on, and ` +
         `silence usually means uncertainty about whether he plays rather than about how good he is.`,
     );
@@ -185,7 +185,7 @@ export function buildRead(i: ReadInput): PlayerRead {
       );
     } else {
       body.push(
-        `The market and his on-field role agree closely — ${i.marketPct} and ${i.usageGrade} out of 100 among ${i.position}s — so there is no hidden edge here in either direction.`,
+        `The market and his on-field role agree closely, ${i.marketPct} and ${i.usageGrade} out of 100 among ${i.position}s, so there is no hidden edge here in either direction.`,
       );
     }
   }
@@ -219,10 +219,10 @@ export function buildRead(i: ReadInput): PlayerRead {
       i.certainty >= 65 && !why.length
         ? `The job looks safe: ${where}, and the depth chart, his production and his availability all point the same way.`
         : i.certainty >= 65
-          ? `The job looks safe — ${where} — with one flag on it: ${why.join('; ')}.`
+          ? `The job looks safe, ${where}, with one flag on it: ${why.join('; ')}.`
           : i.certainty >= 40
             ? `The job is not fully settled. ${where[0]!.toUpperCase()}${where.slice(1)}, and what pulls the certainty down is ${why.length ? why.join('; ') : 'a mix of depth-chart position and availability'}.`
-            : `The role itself is the risk — ${where}, and the evidence conflicts: ${why.length ? why.join('; ') : 'the depth chart and last season’s production point different ways'}. The projection above may be describing a job he does not hold.`,
+            : `The role itself is the risk, ${where}, and the evidence conflicts: ${why.length ? why.join('; ') : 'the depth chart and last season’s production point different ways'}. The projection above may be describing a job he does not hold.`,
     );
   }
 
@@ -231,7 +231,7 @@ export function buildRead(i: ReadInput): PlayerRead {
   if (i.outlook && !i.outlook.sparse) {
     const o = i.outlook;
     body.push(
-      `Players who looked like this went on to a median of ${round(o.median)} points — ${o.medianPpg.toFixed(1)} a game — ` +
+      `Players who looked like this went on to a median of ${round(o.median)} points, ${o.medianPpg.toFixed(1)} a game, ` +
         `with the middle 60% landing between ${round(o.floor)} and ${round(o.ceiling)}. ` +
         // The bust rate is stated once on this page, in the comparables panel
         // below. Repeating it here as its complement made one measurement look
@@ -254,7 +254,7 @@ export function buildRead(i: ReadInput): PlayerRead {
     body.push(
       `No historical season resembles his closely, which is itself a finding: the profile is ` +
         `unusual. The least-unlike roles spread between ${round(o.floor)} and ${round(o.ceiling)} ` +
-        `points, and that width is worth reading — the single middle number is not, because it ` +
+        `points, and that width is worth reading, the single middle number is not, because it ` +
         `roughly doubles in error when the comparison is this loose.`,
     );
   }

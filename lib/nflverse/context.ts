@@ -69,7 +69,7 @@ interface TeamAccum {
   /** Sacks and hits taken by this offence, per dropback. */
   sacks: number;
   qbHits: number;
-  /** Carries stopped at or behind the line — the failure a mean hides. */
+  /** Carries stopped at or behind the line, the failure a mean hides. */
   stuffs: number;
   /** Games each head coach was on the sideline for, so a mid-season firing
    *  resolves to whoever actually ran most of the season. */
@@ -178,7 +178,7 @@ export async function ingestContext(
 
     const teams = new Map<string, TeamAccum>();
     const players = new Map<string, PlayerAccum>();
-    /** Final score per game, taken once — every row of a game repeats it. */
+    /** Final score per game, taken once, every row of a game repeats it. */
     const gameScores = new Map<string, { home: string; away: string; hs: number; as: number }>();
 
     const team = (t: string): TeamAccum => {

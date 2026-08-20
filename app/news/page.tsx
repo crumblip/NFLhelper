@@ -11,7 +11,7 @@ export const dynamic = 'force-dynamic';
 const SEASON = Number(process.env.SEASON ?? 2026);
 
 export const metadata = {
-  title: 'News — NFLhelper',
+  title: 'News · ChipShip',
   description: 'Fantasy-relevant news by team and position',
 };
 
@@ -51,7 +51,7 @@ export default async function NewsPage({
       {meta.stored === 0 ? (
         <div className="notice">
           <strong>Nothing stored yet.</strong> Run <code>npm run ingest:news</code> to pull the
-          feeds. Every source is free and unmetered, so it is safe to run often — and it needs to
+          feeds. Every source is free and unmetered, so it is safe to run often, and it needs to
           be, for the reason in the next paragraph.
         </div>
       ) : null}
@@ -65,8 +65,8 @@ export default async function NewsPage({
         stated (family #6).
       */}
       <div className="notice">
-        <strong>This is an archive, and it is only as old as the polling.</strong> RotoWire — much
-        the best fantasy source here — publishes just <strong>5 items</strong> at a time, a rolling
+        <strong>This is an archive, and it is only as old as the polling.</strong> RotoWire, much
+        the best fantasy source here, publishes just <strong>5 items</strong> at a time, a rolling
         window of about two hours, and nothing backfills it. So the history on this page is what
         has been collected since the ingest first ran, not everything that has ever happened. Run{' '}
         <code>npm run news</code> on a schedule and it fills in; the span currently held is shown
@@ -75,7 +75,7 @@ export default async function NewsPage({
 
       <div className="notice">
         <strong>Items are filed by rule, not scored.</strong> Each one is placed in the first
-        category whose wording it matches, and the phrase that decided it is kept — hover any
+        category whose wording it matches, and the phrase that decided it is kept. Hover any
         category chip to see it. A score would imply a measurement nobody made.
       </div>
 
@@ -91,8 +91,8 @@ export default async function NewsPage({
         </strong>{' '}
         A linebacker&apos;s contract, an offensive tackle carted off, four write-ups of one
         training-camp brawl. The test runs before any category is tried and asks the prior
-        question — <em>is this about somebody who can score fantasy points</em> — because
-        otherwise every one of those reads as a signing or an injury, which is exactly what they
+        question: <em>is this about somebody who can score fantasy points?</em> Otherwise
+        every one of those reads as a signing or an injury, which is exactly what they
         are. A further <strong>{meta.unmatched}</strong> matched no rule either way and are set
         aside rather than given a low score.
       </div>

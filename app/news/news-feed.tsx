@@ -14,9 +14,11 @@ import {
   CATEGORY_BLURB,
   CATEGORY_LABEL,
   FANTASY_CATEGORIES,
-  SOURCE_LABEL,
   ago,
+  isCreatorSource,
+  sourceLabel,
 } from '../../lib/news-shared';
+import { CREATORS } from '../../lib/creators';
 import { teamOf, teamStyle, positionColor } from '../../lib/teams';
 import { Tip } from '../ui/tip';
 
@@ -36,15 +38,25 @@ import { Tip } from '../ui/tip';
 
 const POSITIONS = ['QB', 'RB', 'WR', 'TE'] as const;
 
+/* Slug to name, so a stored `creator:joel-smyth` prints as "Joel Smyth". */
+const CREATOR_NAMES: Record<string, string> = Object.fromEntries(
+  CREATORS.map((c) => [c.slug, c.name]),
+);
+const CREATOR_NOTES: Record<string, string> = Object.fromEntries(
+  CREATORS.map((c) => [c.slug, c.note]),
+);
+
 function Item({ row }: { row: NewsRow }) {
   const cat = row.category;
+  const fromCreator = isCreatorSource(row.source);
+  const slug = fromCreator ? row.source.slice('creator:'.length) : null;
   return (
-    <article className="news-item" data-cat={cat}>
+    <article className="news-item" data-cat={cat} data-creator={fromCreator}>
       <div className="news-item-head">
         <Tip
           content={
             <>
-              <strong>{CATEGORY_LABEL[cat]}</strong> — {CATEGORY_BLURB[cat]}
+              <strong>{CATEGORY_LABEL[cat]}</strong>, {CATEGORY_BLURB[cat]}
               {row.categoryBasis ? (
                 <>
                   <br />
@@ -58,7 +70,15 @@ function Item({ row }: { row: NewsRow }) {
             {CATEGORY_LABEL[cat]}
           </span>
         </Tip>
-        <span className="news-src">{SOURCE_LABEL[row.source] ?? row.source}</span>
+        {fromCreator && slug ? (
+          <Tip content={CREATOR_NOTES[slug] ?? 'On the curated creator roster.'}>
+            <span className="news-src is-creator" tabIndex={0}>
+              {CREATOR_NAMES[slug] ?? slug}
+            </span>
+          </Tip>
+        ) : (
+          <span className="news-src">{sourceLabel(row.source, CREATOR_NAMES)}</span>
+        )}
         <span className="news-time">{ago(row.publishedAt)}</span>
       </div>
 
@@ -89,7 +109,7 @@ function Item({ row }: { row: NewsRow }) {
                   that string in a paragraph" are different claims and the page
                   should not present them identically. */}
               {p.method === 'name' ? (
-                <Tip content="Matched on name rather than on an id — very likely right, but not certain.">
+                <Tip content="Matched on name rather than on an id, very likely right, but not certain.">
                   <i className="news-soft" tabIndex={0} aria-label="matched by name">
                     ~
                   </i>
@@ -127,6 +147,7 @@ export default function NewsFeed({
   const [pos, setPos] = useState<string>('ALL');
   const [cat, setCat] = useState<string>('ALL');
   const [query, setQuery] = useState('');
+  const [creatorsOnly, setCreatorsOnly] = useState(false);
 
   /*
    * Search covers the headline, the body AND the names of the players an item
@@ -146,6 +167,7 @@ export default function NewsFeed({
     const base = teamNews ? teamNews.rows : league;
     const terms = query.toLowerCase().split(/\s+/).filter(Boolean);
     return base.filter((r) => {
+      if (creatorsOnly && !isCreatorSource(r.source)) return false;
       if (cat !== 'ALL' && r.category !== cat) return false;
       if (pos !== 'ALL') {
         if (pos === 'TEAM') {
@@ -159,7 +181,7 @@ export default function NewsFeed({
       }
       return true;
     });
-  }, [teamNews, league, pos, cat, query]);
+  }, [teamNews, league, pos, cat, query, creatorsOnly]);
 
   /*
    * The chip counts are computed here rather than read from the server, so they
@@ -173,14 +195,15 @@ export default function NewsFeed({
    */
   const searched = useMemo(() => {
     const base = teamNews ? teamNews.rows : league;
+    const scoped = creatorsOnly ? base.filter((r) => isCreatorSource(r.source)) : base;
     const terms = query.toLowerCase().split(/\s+/).filter(Boolean);
-    if (!terms.length) return base;
-    return base.filter((r) => {
+    if (!terms.length) return scoped;
+    return scoped.filter((r) => {
       const hay = `${r.headline} ${r.body ?? ''} ${r.players.map((p) => p.name).join(' ')}`
         .toLowerCase();
       return terms.every((t) => hay.includes(t));
     });
-  }, [teamNews, league, query]);
+  }, [teamNews, league, query, creatorsOnly]);
 
   const counts = useMemo(() => {
     const m: Record<string, number> = {};
@@ -281,7 +304,7 @@ export default function NewsFeed({
               {counts[p] ? <b> {counts[p]}</b> : null}
             </button>
           ))}
-          <Tip content="Items about the team with no skill player attached — a coach on how the offence will be run, a coordinator change, a camp report.">
+          <Tip content="Items about the team with no skill player attached, a coach on how the offence will be run, a coordinator change, a camp report.">
             <button
               data-on={pos === 'TEAM'}
               onClick={() => setPos('TEAM')}
@@ -292,6 +315,31 @@ export default function NewsFeed({
             </button>
           </Tip>
         </div>
+
+        {/*
+          Creators get their own switch rather than a category chip, because
+          "who said it" is a different axis from "what kind of thing is it",
+          a creator's injury video is still injury news. It sits ahead of the
+          category row since curation is the stronger filter of the two.
+        */}
+        <Tip
+          content={
+            <>
+              Only the curated roster:{' '}
+              {CREATORS.map((c) => c.name).join(', ')}. Titles that defer their
+              payoff, &ldquo;stay tuned for number one&rdquo;, are dropped before they
+              get here.
+            </>
+          }
+        >
+          <button
+            className="chip"
+            data-on={creatorsOnly}
+            onClick={() => setCreatorsOnly((v) => !v)}
+          >
+            Creators only
+          </button>
+        </Tip>
 
         <div className="news-cats">
           <button className="chip" data-on={cat === 'ALL'} onClick={() => setCat('ALL')}>
@@ -317,11 +365,11 @@ export default function NewsFeed({
         <div className="notice">
           <strong>Nothing here.</strong>{' '}
           {query
-            ? `Nothing matches “${query}”${pos !== 'ALL' || cat !== 'ALL' ? ' with the current filters' : ''}. The archive only holds what has been polled — ${meta.relevant} items — so a name that returns nothing may simply not have been in the news yet.`
+            ? `Nothing matches “${query}”${pos !== 'ALL' || cat !== 'ALL' ? ' with the current filters' : ''}. The archive only holds what has been polled, ${meta.relevant} items, so a name that returns nothing may simply not have been in the news yet.`
             : pos === 'TEAM'
-              ? 'No item about this team without a player attached — those come from coaching interviews and camp reports, which are rarer than player news.'
+              ? 'No item about this team without a player attached, those come from coaching interviews and camp reports, which are rarer than player news.'
               : pos !== 'ALL'
-                ? `No ${pos} news for this team in what has been collected so far. The archive is ${meta.oldest && meta.newest ? `${((meta.newest - meta.oldest) / 86_400_000).toFixed(1)} days` : 'young'} deep — this is very likely a gap in the polling rather than a quiet position.`
+                ? `No ${pos} news for this team in what has been collected so far. The archive is ${meta.oldest && meta.newest ? `${((meta.newest - meta.oldest) / 86_400_000).toFixed(1)} days` : 'young'} deep, this is very likely a gap in the polling rather than a quiet position.`
                 : 'Nothing matched these filters.'}
         </div>
       ) : (
@@ -333,7 +381,7 @@ export default function NewsFeed({
       )}
 
       {/* The archive's own age, stated where the reader has just finished
-          reading it — an empty position filter means "we have not been
+          reading it, an empty position filter means "we have not been
           watching long" far more often than it means "nothing happened". */}
       {meta.oldest && meta.newest ? (
         <p className="sub" style={{ marginTop: 'var(--s6)' }}>

@@ -161,7 +161,7 @@ export interface UsageFit {
   /** Predictor means and spreads, so a new player can be standardized the same way. */
   means: number[];
   sds: number[];
-  /** Coefficients in standard-deviation units — directly comparable to each other. */
+  /** Coefficients in standard-deviation units, directly comparable to each other. */
   standardized: number[];
   predictors: UsagePredictor[];
   n: number;

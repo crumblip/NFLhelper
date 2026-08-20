@@ -52,7 +52,7 @@ export interface ToppsProps {
   blurb: string;
   rookieSeason: number | null;
   status: string | null;
-  /** ESPN player id — the key to the portrait. Null falls back to initials. */
+  /** ESPN player id, the key to the portrait. Null falls back to initials. */
   espnId: string | null;
 }
 
@@ -92,7 +92,7 @@ export default function ToppsCard(p: ToppsProps) {
         className="topps"
         data-flipped={flipped}
         onClick={() => setFlipped((f) => !f)}
-        aria-label={`${p.name} card — ${flipped ? 'showing statistics, click for front' : 'click to see season statistics'}`}
+        aria-label={`${p.name} card, ${flipped ? 'showing statistics, click for front' : 'click to see season statistics'}`}
       >
         {/* ---------------- front ---------------- */}
         <span className="topps-face" aria-hidden={flipped}>
@@ -197,7 +197,7 @@ export default function ToppsCard(p: ToppsProps) {
             </table>
           ) : (
             <p style={{ fontSize: 10, color: '#6b6357', margin: '4px 0' }}>
-              No regular-season history — rookie.
+              No regular-season history, rookie.
             </p>
           )}
 

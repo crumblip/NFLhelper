@@ -1,6 +1,9 @@
 import { sqlite } from '../lib/db/index';
 import { getWaiverBoard } from '../lib/waiver';
 import { getLeagueNews } from '../lib/news';
+import { CREATORS } from '../lib/creators';
+import { buildLiveReads } from '../lib/pipeline/inseason';
+import { resolveUsageSeason } from '../lib/pipeline/usage-grade';
 import { USAGE_CONFIDENCE, GAP_DEAD_BAND } from '../lib/pipeline/blend';
 import { buildScouting } from '../lib/pipeline/scouting';
 import { buildRoleCertainty } from '../lib/pipeline/role';
@@ -2373,6 +2376,35 @@ if (newsCount === 0) {
   );
 
   /*
+   * Every curated creator is still returning videos.
+   *
+   * A channel that renames itself or goes quiet costs nothing loudly — the feed
+   * simply returns fewer items and the tab looks a bit thinner, which is
+   * indistinguishable from a slow week. Since the whole quality argument for
+   * this surface rests on the roster, a roster member silently dropping out is
+   * exactly the failure that must not be quiet.
+   *
+   * Soft, because a creator genuinely can post nothing for a fortnight in
+   * February, and a hard failure would then block every refresh.
+   */
+  const rostered = sqlite
+    .prepare(
+      `SELECT source, COUNT(*) n FROM news_item WHERE source LIKE 'creator:%' GROUP BY source`,
+    )
+    .all() as Array<{ source: string; n: number }>;
+  if (rostered.length > 0) {
+    const seen = new Set(rostered.map((r) => r.source.slice('creator:'.length)));
+    const missing = CREATORS.filter((c) => !seen.has(c.slug));
+    check(
+      'every creator on the roster is still returning videos',
+      missing.length === 0,
+      `${missing.map((m) => `${m.name} (${m.handle})`).join(', ')} returned nothing — ` +
+        `a renamed or dead channel looks exactly like a quiet fortnight`,
+      true,
+    );
+  }
+
+  /*
    * FAMILY #4 — the whole point of resolving through the depth chart.
    *
    * A mention's team must be the team the player is on NOW. This is the check
@@ -2538,6 +2570,70 @@ if (injCount === 0) {
     `${noText} of ${injCount} rows have neither a beat report nor a written read`,
     true,
   );
+}
+
+/* ------------------------------------------------------------------ */
+/*
+ * THE IN-SEASON SWITCH
+ *
+ * The compare tool answers a different question once games are played, and the
+ * switch is automatic. That makes it exactly the kind of thing that can be
+ * wrong for months without anyone noticing: in August a broken switch looks
+ * like a working draft tool, and the failure only appears in week 1 when it is
+ * most needed.
+ *
+ * So the contract is asserted directly. `buildLiveReads` must be EMPTY before
+ * the season starts, because every caller is written unconditionally on that
+ * promise, and it must be POPULATED for a season that was played.
+ */
+console.log('\nIN-SEASON SWITCH — does the live read arm and disarm correctly?');
+{
+  const { live, week } = resolveUsageSeason(SEASON);
+  const nowReads = buildLiveReads(SEASON);
+
+  check(
+    live
+      ? 'the live read is populated now that games have been played'
+      : 'the live read is empty before the season starts',
+    live ? nowReads.size > 0 : nowReads.size === 0,
+    live
+      ? `week ${week} is in the data but buildLiveReads returned ${nowReads.size} players`
+      : `no games played yet, but buildLiveReads returned ${nowReads.size} players — every caller ` +
+        `is written on the promise that it is empty until week 1`,
+  );
+
+  /*
+   * The other half, tested against a season that definitely happened. Without
+   * this the check above passes trivially all summer while the machinery it is
+   * guarding has never once been executed.
+   */
+  const priorSeason = (
+    sqlite
+      .prepare(
+        `SELECT COALESCE(MAX(season), 0) s FROM player_stats_week
+         WHERE season < ? AND season_type = 'REG'`,
+      )
+      .get(SEASON) as { s: number }
+  ).s;
+  if (priorSeason > 0) {
+    const past = buildLiveReads(priorSeason);
+    const scoring = [...past.values()].filter((r) => r.ppg > 0).length;
+    check(
+      'the live read works on a season that was actually played',
+      past.size > 100 && scoring > 100,
+      `${priorSeason} returned ${past.size} players, ${scoring} with points — the in-season ` +
+        `path is unreachable until September, so this is the only thing exercising it`,
+    );
+
+    // A spike carries no signal and must never be flagged; only a fall is.
+    const spiked = [...past.values()].filter((r) => (r.snapDelta ?? 0) >= 15 && r.collapsed);
+    check(
+      'a snap-share spike is never flagged as a role problem',
+      spiked.length === 0,
+      `${spiked.length} players with a RISING snap share are marked collapsed — a spike returns ` +
+        `6.77 points a game against 6.84 for a flat role and carries no signal`,
+    );
+  }
 }
 
 /*

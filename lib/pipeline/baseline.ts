@@ -63,7 +63,7 @@ export interface Observation {
   adp: number;
   points: number;
   vorp: number;
-  /** Draft sample size behind this ADP — thin years should count for less. */
+  /** Draft sample size behind this ADP, thin years should count for less. */
   weight: number;
 }
 

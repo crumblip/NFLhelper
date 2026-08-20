@@ -60,7 +60,7 @@ export class ParlayProvider implements PropsProvider {
     return JSON.parse(body);
   }
 
-  /** Account state. Free — no credits, so safe to call before and after a run. */
+  /** Account state. Free, no credits, so safe to call before and after a run. */
   async usage(): Promise<ParlayUsage> {
     const j = (await this.get('/usage')) as {
       credits_used: number;

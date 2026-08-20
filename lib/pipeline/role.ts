@@ -64,7 +64,7 @@ export interface RoleCertainty {
     vulnerability: number;
     /** False when nothing was measured and the figure is only a prior. */
     vulnerabilityKnown: boolean;
-    /** The measured cause, with its number — "5.4 games a year", "age 32". */
+    /** The measured cause, with its number, "5.4 games a year", "age 32". */
     vulnerabilityReason: string;
     /**
      * False when he holds too little work, over too few games, for the question
@@ -350,7 +350,7 @@ export function buildRoleCertainty(season: number): Map<string, RoleCertainty> {
         // New arrival. Real, unquantifiable from a share earned elsewhere, and
         // said plainly instead of being turned into an arrow.
         m.trend = 'holding';
-        m.trendReason = `arrived from ${m.shareTeam} — last season's share was earned there`;
+        m.trendReason = `arrived from ${m.shareTeam}, last season's share was earned there`;
       } else if (biggerShareBelow) {
         m.trend = 'slipping';
         m.trendReason = `${biggerShareBelow.name} is listed below him and took more of the work here`;

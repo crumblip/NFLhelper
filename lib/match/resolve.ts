@@ -182,7 +182,7 @@ export class PlayerIndex {
     return out;
   }
 
-  /** Still tied — prefer the right team, then whoever was actually playing. */
+  /** Still tied, prefer the right team, then whoever was actually playing. */
   private disambiguate(
     list: Candidate[],
     team: string | null,

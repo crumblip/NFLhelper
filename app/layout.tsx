@@ -7,7 +7,8 @@ import Rail from './ui/rail';
 import ThemeToggle from './ui/theme-toggle';
 
 export const metadata = {
-  title: 'NFLhelper — draft board',
+  title: 'ChipShip · fantasy football analytics',
+  icons: { icon: '/icon.png', apple: '/icon.png' },
   description: 'Sportsbook props and on-field usage against ADP',
 };
 
@@ -26,8 +27,11 @@ const SEASON = Number(process.env.SEASON ?? 2026);
  */
 const NO_FLASH = `
 try {
-  var t = localStorage.getItem('nflhelper-theme');
-  if (t === 'dark' || t === 'light') document.documentElement.setAttribute('data-theme', t);
+  var t = localStorage.getItem('chipship-theme') || localStorage.getItem('nflhelper-theme');
+  if (t === 'dark' || t === 'light') {
+    document.documentElement.setAttribute('data-theme', t);
+    localStorage.setItem('chipship-theme', t);
+  }
 } catch (e) {}
 `;
 
@@ -47,6 +51,15 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             <div className="shell-main">
               <header className="topbar">
                 <div className="topbar-inner">
+                  {/*
+                    The name is set in TYPE here rather than as part of the rail
+                    mark. A 42px rail slot cannot carry a wordmark legibly, and
+                    the topbar has the width for it, so the two halves of the
+                    lockup are split across the two places each one fits.
+                  */}
+                  <a className="brandmark" href="/">
+                    <b>CHIP</b>SHIP
+                  </a>
                   <GlobalSearch index={index} />
                   <span className="spacer" />
                   <ThemeToggle />

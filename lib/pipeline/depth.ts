@@ -228,7 +228,7 @@ export function buildContingencies(season: number): Map<string, Contingency> {
         worst && worst.volumeShare * worst.vulnerability >= 0.08
           ? `behind ${worst.name}` +
             (worst.reason ? ` (${worst.reason})` : '') +
-            ` — ${Math.round(worst.volumeShare * 100)}% of the work at ` +
+            `, ${Math.round(worst.volumeShare * 100)}% of the work at ` +
             `${Math.round(worst.vulnerability * 100)}% risk`
           : null;
 

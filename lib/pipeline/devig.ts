@@ -110,7 +110,7 @@ export function impliedMean(
   return { mu: line + sigma * probit(clamped), sigma, pOver, hold };
 }
 
-/** Median — the consensus across books, robust to one book hanging a stale line. */
+/** Median, the consensus across books, robust to one book hanging a stale line. */
 export function median(values: number[]): number {
   if (!values.length) return NaN;
   const s = [...values].sort((a, b) => a - b);

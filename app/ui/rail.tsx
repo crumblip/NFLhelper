@@ -38,6 +38,18 @@ const ITEMS: Array<{ href: string; label: string; icon: ReactNode }> = [
     ),
   },
   {
+    href: '/compare',
+    label: 'Compare',
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 3v18" />
+        <path d="M6 8 3 14h6zM18 8l-3 6h6z" />
+        <path d="M3 14a3 3 0 0 0 6 0M15 14a3 3 0 0 0 6 0" />
+        <path d="M7 6h10" />
+      </svg>
+    ),
+  },
+  {
     href: '/news',
     label: 'News',
     icon: (
@@ -86,8 +98,28 @@ export default function Rail() {
 
   return (
     <aside className="rail">
-      <a className="rail-brand" href="/" aria-label="NFLhelper home">
-        <span className="rail-mark">N</span>
+      <a className="rail-brand" href="/" aria-label="ChipShip home">
+        {/*
+          The mark is an <img> stacked OVER a monogram, not one or the other.
+          `onError` hides the image and leaves the letters showing, so the rail
+          is never a broken-image glyph while the logo is being generated. Same
+          fallback the player card uses for a missing portrait (#106).
+
+          No wordmark here on purpose. The slot is 42px across, and a lockup
+          whose text is already small at 1024px wide renders as grey mush at
+          that size. Shrinking a good mark until it smudges is not using it, so
+          the name is set in type in the topbar where type belongs.
+        */}
+        <span className="rail-mark">
+          <b aria-hidden>CS</b>
+          <img
+            src="/chipship-mark.png"
+            alt=""
+            onError={(e) => {
+              (e.currentTarget as HTMLImageElement).style.display = 'none';
+            }}
+          />
+        </span>
       </a>
       <nav className="rail-nav">
         {ITEMS.map((i) => (

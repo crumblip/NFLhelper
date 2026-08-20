@@ -1,6 +1,8 @@
 import { sqlite } from '../lib/db/index';
 import { fetchEspnNews } from '../lib/providers/news/espn';
 import { FEEDS, fetchFeed } from '../lib/providers/news/rss';
+import { fetchAllCreators } from '../lib/providers/news/youtube';
+import { assessCreatorItem } from '../lib/pipeline/creator-quality';
 import type { NewsFetch } from '../lib/providers/news/types';
 import {
   buildRegistry,
@@ -32,6 +34,54 @@ import {
 
 const SEASON = Number(process.env.SEASON ?? 2026);
 
+/**
+ * Where one item is filed. The ONE place that decision is made.
+ *
+ * Both the live pull and the archive re-file call this. They were briefly two
+ * code paths doing the same job, which is how `verdict()` and `buildCase()`
+ * ended up disagreeing on 17 rows (#86) — the same failure is available here
+ * and would show as items filed differently depending on whether they arrived
+ * today or last week.
+ *
+ * Curated creators take a different route through it, and that is the point of
+ * curating them. The relevance veto exists to sort an open wire where anything
+ * can turn up; a creator on the roster has already been vouched for by a human,
+ * so asking "is this fantasy news" again would only ever produce false
+ * negatives. What replaces it is the clickbait check — a good creator can still
+ * have a bad day — and a floor: if no category matches a curated creator's
+ * video, it is `analysis`, never `general`, because curation already settled
+ * the relevance question that `general` exists to express doubt about.
+ */
+function fileItem(
+  source: string,
+  headline: string,
+  body: string | null,
+  subjects: { skill: number; nonSkill: number },
+): { category: string; basis: string | null } {
+  if (source.startsWith('creator:')) {
+    const a = assessCreatorItem(headline, body);
+    if (a.clickbait) return { category: 'general', basis: `clickbait: ${a.clickbait}` };
+    /*
+     * Categorise a creator video on its TITLE ALONE.
+     *
+     * The description is a chapter list and a block of promotional boilerplate,
+     * not a description of the argument — and running the classifier over it
+     * filed "The RBs We're Drafting (and Fading) in 2026" and "2026 Fantasy
+     * Football Rankings" under **roster move**, because the word "sign" appears
+     * in a sponsor line thirty lines down. The title is what the video is
+     * about; everything after it is packaging.
+     */
+    const c = classify(headline, null);
+    return c.category === 'general'
+      ? { category: 'analysis', basis: 'from a creator on the roster' }
+      : c;
+  }
+
+  const veto = vetoOf(headline, body, subjects.skill, subjects.nonSkill);
+  if (veto) return { category: 'general', basis: `${veto.reason}: ${veto.basis}` };
+  return classify(headline, body);
+}
+
 async function main(): Promise<void> {
   const started = Date.now();
   console.log(`news ingest — season ${SEASON}\n`);
@@ -39,6 +89,7 @@ async function main(): Promise<void> {
   const fetches: NewsFetch[] = [];
   fetches.push(await fetchEspnNews());
   for (const spec of FEEDS) fetches.push(await fetchFeed(spec));
+  for (const f of await fetchAllCreators()) fetches.push(f);
 
   for (const f of fetches) {
     if (f.error) console.log(`  ${f.source.padEnd(10)} FAILED — ${f.error}`);
@@ -99,10 +150,7 @@ async function main(): Promise<void> {
          */
         const resolved = resolveMentions(item, reg);
         const subjects = subjectCounts(item, resolved, reg);
-        const veto = vetoOf(item.headline, item.body, subjects.skill, subjects.nonSkill);
-        const cls = veto
-          ? { category: 'general' as const, basis: `${veto.reason}: ${veto.basis}` }
-          : classify(item.headline, item.body);
+        const cls = fileItem(f.source, item.headline, item.body ?? null, subjects);
 
         insertItem.run(
           id, f.source, item.externalId, item.headline, item.body ?? null,
@@ -121,7 +169,10 @@ async function main(): Promise<void> {
         }
 
         byCategory.set(cls.category, (byCategory.get(cls.category) ?? 0) + 1);
-        if (veto) byVeto.set(veto.reason, (byVeto.get(veto.reason) ?? 0) + 1);
+        if (cls.category === 'general' && cls.basis) {
+          const why = cls.basis.split(':')[0]!.trim();
+          byVeto.set(why, (byVeto.get(why) ?? 0) + 1);
+        }
         if (known) seen++;
         else fresh++;
       }
@@ -179,10 +230,13 @@ async function main(): Promise<void> {
         })),
         reg,
       );
-      const veto = vetoOf(s.headline, s.body, counts.skill, counts.nonSkill);
-      const next = veto
-        ? { category: 'general', basis: `${veto.reason}: ${veto.basis}` }
-        : classify(s.headline, s.body);
+      // The source is the row key's prefix — `creator:joel-smyth:VIDEOID` and
+      // `espn:12345` both give it up in the first two colon-separated parts,
+      // and `fileItem` needs it to know which route the item takes.
+      const source = s.id.startsWith('creator:')
+        ? s.id.split(':').slice(0, 2).join(':')
+        : s.id.split(':')[0]!;
+      const next = fileItem(source, s.headline, s.body, counts);
       if (next.category !== s.category || next.basis !== s.basis) {
         reclass.run(next.category, next.basis, s.id);
         moved++;

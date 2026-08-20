@@ -131,7 +131,7 @@ export function trajectoryNotes(t: Trajectory | undefined | null): string[] {
 
   if (t.collapsed && t.snapDelta !== null) {
     notes.push(
-      `role shrinking — snap share down ${Math.abs(Math.round(t.snapDelta))} points over the last ` +
+      `role shrinking, snap share down ${Math.abs(Math.round(t.snapDelta))} points over the last ` +
         `${RECENT_WINDOW} games`,
     );
   }

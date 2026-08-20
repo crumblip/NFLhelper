@@ -408,7 +408,7 @@ export function opportunityFor(
       (rzShare >= 0.3 ? `, ${Math.round(rzShare * 100)}% of red-zone work` : '') +
       (who ? ` (${who})` : '') +
       (absorbed >= 0.25 ? `; arrivals signed on top` : '') +
-      ' — an open question, not an inheritance';
+      ', an open question, not an inheritance';
   }
 
   return { share, rzShare, note };

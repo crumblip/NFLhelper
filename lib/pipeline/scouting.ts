@@ -12,15 +12,15 @@ import { resolveUsageSeason } from './usage-grade';
  * however good its raw correlation looks.
  *
  * WHAT SURVIVED (partial r against next season, after target/rush share):
- *   first-down touches   WR .387  RB .338   <- strongest independent signal found
+ *   first-down touches   WR .387  RB .338  TE .320  QB .360  <- strongest everywhere
  *   yards per carry             RB .274
- *   EPA per touch        WR .189 RB .261
+ *   EPA per touch        WR .189  RB .261  TE .140  (QB: DEAD at .113)
  *   RB target share             RB .259
  *   RB yards per route          RB .257
  *   age                  WR .254
  *   team points scored   WR .204
  *   QB EPA per dropback  WR .193
- *   first-down rate      WR .184 RB .209
+ *   first-down rate      WR .184  RB .209  TE .154  (QB: DEAD at .055)
  *   yards per route run  WR .152
  *   yards after contact         RB .153
  *
@@ -33,6 +33,8 @@ import { resolveUsageSeason } from './usage-grade';
  *   YAC per reception    WR .089
  *   pass rate over expected  WR .144 RB -.079
  *   TE yards per route   TE .034 — target share absorbs it entirely
+ *   QB EPA per dropback  QB .460 — the strongest quarterback signal of all, and
+ *                        stronger than his own volume control (.418)
  */
 
 /** A single graded indicator, carrying its own evidence. */
@@ -45,8 +47,16 @@ export interface Indicator {
   display: string;
   /** Percentile within position among qualified players, 0-100. */
   percentile: number | null;
-  /** Measured partial correlation with next season, after volume. */
-  weight: number;
+  /**
+   * Measured partial correlation with next season, after the position's volume
+   * metric is removed.
+   *
+   * **Null means it was not measured for THIS position, or was measured and
+   * found dead.** It is not a missing value to be filled with a neighbour's:
+   * tight ends and quarterbacks used to be shown the receiver's figure, which
+   * is how a QB's first-down rate advertised .184 when its real number is .055.
+   */
+  weight: number | null;
   detail: string;
 }
 
@@ -57,12 +67,12 @@ export interface TeamEnvironment {
   qbEpaDropback: number | null;
   qbEpaRank: number | null;
   primaryQbName: string | null;
-  /** Share of team dropbacks he took — the EPA below is the TEAM's, not his. */
+  /** Share of team dropbacks he took, the EPA below is the TEAM's, not his. */
   primaryQbShare: number | null;
   passOe: number | null;
   outsideRunShare: number | null;
   offEpaRank: number | null;
-  /** Head coach — not the coordinator; nflverse publishes no coordinator table. */
+  /** Head coach, not the coordinator; nflverse publishes no coordinator table. */
   headCoach: string | null;
   /** Mean share of team carries his lead back takes. Null under two seasons. */
   coachTopBackShare: number | null;
@@ -127,14 +137,14 @@ export interface Scouting {
   /** Where his usage was earned, when that is not where he plays now. */
   movedFrom: string | null;
   screen: ReceiverScreen | null;
-  /** Run direction, for backs. Direction is not blocking scheme — see below. */
+  /** Run direction, for backs. Direction is not blocking scheme, see below. */
   runSplit: { outside: number; tackle: number; inside: number; outsideYpc: number | null; insideYpc: number | null } | null;
 }
 
 interface Raw {
   playerId: string;
   position: string;
-  /** His team NOW — the key for the environment below. */
+  /** His team NOW, the key for the environment below. */
   team: string | null;
   /** The team his usage was earned at, which may not be the same one. */
   usageTeam: string | null;
@@ -159,6 +169,10 @@ interface Raw {
   yardsAfterContact: number | null;
   env: TeamEnvironment;
 }
+
+/** ".387", or "no measurable signal" when the metric is dead for a position. */
+const fmtPartial = (w: number | null | undefined): string =>
+  w === null || w === undefined ? 'no measurable signal' : w.toFixed(3).replace(/^0/, '');
 
 const pct = (v: number, all: number[]): number | null => {
   const usable = all.filter((x) => Number.isFinite(x));
@@ -300,14 +314,49 @@ export function buildScouting(season: number): Map<string, Scouting> {
 
   const out = new Map<string, Scouting>();
 
+  /*
+   * Measured partial correlations, PER POSITION.
+   *
+   * This used to be `isBack ? rbNumber : wrNumber`, which handed tight ends and
+   * quarterbacks the receiver's figure — and said so out loud, since the tile
+   * quotes the partial as its justification. A tight end's "first downs per
+   * game" claimed **.387**, a number measured on 676 receiver-seasons and on no
+   * tight end anywhere. Family #6 with a decimal place on it, and family #1 in
+   * the dispatch that produced it.
+   *
+   * `calibrate:advanced` now reports all four positions and these are its
+   * numbers. Two of them change what the page should say rather than just the
+   * digits:
+   *
+   *   - a QUARTERBACK's first-down RATE is **dead** (.055) and his EPA per
+   *     touch nearly so (.113). They were being shown at .184 and .189, i.e.
+   *     as "real independent signals", which they are for a receiver and are
+   *     not for him.
+   *   - his single strongest signal is EPA per dropback at **.460**, stronger
+   *     than the volume control itself — and it was not a tile at all.
+   *
+   * A null means the metric was measured for this position and found dead, or
+   * was never measured for it. Either way the tile is shown as description with
+   * no correlation attached, because a blank is honest and a borrowed number is
+   * not.
+   */
+  const WEIGHTS: Record<string, Record<string, number | null>> = {
+    //              first-downs  fd-rate  epa-touch  yprr
+    WR: { 'first-downs': 0.387, 'fd-rate': 0.184, 'epa-touch': 0.189, yprr: 0.152 },
+    RB: { 'first-downs': 0.338, 'fd-rate': 0.209, 'epa-touch': 0.261, yprr: 0.257 },
+    TE: { 'first-downs': 0.320, 'fd-rate': 0.154, 'epa-touch': 0.140, yprr: null },
+    QB: { 'first-downs': 0.360, 'fd-rate': null, 'epa-touch': null, yprr: null },
+  };
+
   for (const r of full) {
     const p = pools.get(r.position)!;
     const isBack = r.position === 'RB';
+    const w = WEIGHTS[r.position] ?? {};
     const indicators: Indicator[] = [];
 
     const add = (
       id: string, label: string, value: number | null, display: string,
-      pool: number[], weight: number, detail: string,
+      pool: number[], weight: number | null, detail: string,
     ) => {
       if (value === null) return;
       indicators.push({
@@ -328,26 +377,32 @@ export function buildScouting(season: number): Map<string, Scouting> {
     add(
       'first-downs', 'First downs per game', fdPerGame(r),
       fdPerGame(r) === null ? '' : `${fdPerGame(r)!.toFixed(1)}/g`,
-      p.fdPerGame, isBack ? 0.338 : 0.387,
-      'Chains moved per game, rushing and receiving. The strongest forward signal measured here: ' +
-        `correlates with next-season points at ${isBack ? '.689' : '.773'} raw and ` +
-        `${isBack ? '.338' : '.387'} after removing what ${isBack ? 'rush' : 'target'} share already explains.`,
+      p.fdPerGame, w['first-downs'] ?? null,
+      'Chains moved per game, rushing and receiving. The strongest forward signal measured at ' +
+        `every position: after removing what ${isBack ? 'rush share' : r.position === 'QB' ? 'pass-snap share' : 'target share'} ` +
+        `already explains it still carries ${fmtPartial(w['first-downs'])} for a ${r.position}.`,
     );
 
     add(
       'fd-rate', 'First-down rate', fdRate(r),
       fdRate(r) === null ? '' : `${(fdRate(r)! * 100).toFixed(1)}%`,
-      p.fdRate, isBack ? 0.209 : 0.184,
-      'Share of his touches that moved the chains — the rate behind the count, so it is not ' +
-        'just a restatement of workload.',
+      p.fdRate, w['fd-rate'] ?? null,
+      'Share of his touches that moved the chains, the rate behind the count, so it is not ' +
+        'just a restatement of workload. ' +
+        (w['fd-rate'] === null
+          ? `Measured for ${r.position}s and found dead, so it is here as description only.`
+          : `Carries ${fmtPartial(w['fd-rate'])} for a ${r.position} once volume is removed.`),
     );
 
     add(
       'epa-touch', 'EPA per touch', epaTouch(r),
       epaTouch(r) === null ? '' : epaTouch(r)!.toFixed(3),
-      p.epaTouch, isBack ? 0.261 : 0.189,
-      'Expected points added per touch — value created rather than yards accumulated. Counts ' +
-        'field position and down, so a 3-yard gain on 3rd-and-2 outranks an 8-yard gain on 3rd-and-15.',
+      p.epaTouch, w['epa-touch'] ?? null,
+      'Expected points added per touch: value created rather than yards accumulated. Counts ' +
+        'field position and down, so a 3-yard gain on 3rd-and-2 outranks an 8-yard gain on 3rd-and-15. ' +
+        (w['epa-touch'] === null
+          ? `Measured for ${r.position}s and found dead, so it is here as description only.`
+          : `Carries ${fmtPartial(w['epa-touch'])} for a ${r.position}.`),
     );
 
     if (isBack) {
@@ -362,7 +417,7 @@ export function buildScouting(season: number): Map<string, Scouting> {
         'yac', 'Yards after contact', r.yardsAfterContact,
         r.yardsAfterContact === null ? '' : `${r.yardsAfterContact.toFixed(2)}/att`,
         p.yac, 0.153,
-        'Weak but not nothing — .207 raw, .153 after rush share. Worth reading as a tiebreaker ' +
+        'Weak but not nothing, .207 raw, .153 after rush share. Worth reading as a tiebreaker ' +
           'rather than a thesis.',
       );
       add(
@@ -376,9 +431,9 @@ export function buildScouting(season: number): Map<string, Scouting> {
       add(
         'yprr', 'Yards per route run', yprr(r),
         yprr(r) === null ? '' : yprr(r)!.toFixed(2),
-        p.yprr, r.position === 'TE' ? 0.034 : 0.152,
+        p.yprr, w.yprr ?? null,
         r.position === 'TE'
-          ? 'For tight ends this adds nothing once target share is known (.034) — the volume is the story.'
+          ? 'For tight ends this adds nothing once target share is known (.034), the volume is the story.'
           : 'Receiving yards per pass snap on the field. Adds a small genuine lift over target share (.152): ' +
             'it separates receivers earning their volume from receivers merely given it.',
       );

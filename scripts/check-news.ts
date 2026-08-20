@@ -1,5 +1,7 @@
 import { sqlite } from '../lib/db/index';
 import { CATEGORY_LABEL, FANTASY_CATEGORIES, classify } from '../lib/pipeline/news';
+import { assessCreatorItem } from '../lib/pipeline/creator-quality';
+import { CREATORS } from '../lib/creators';
 
 /**
  * What the classifier is actually doing, over everything stored.
@@ -193,5 +195,75 @@ if (drift > 0) {
   console.log(
     `\n${drift} stored items would classify differently under the current rules — ` +
       're-run `npm run ingest:news` to bring them into line (it rewrites categories in place).',
+  );
+}
+
+/* ---- the creator roster and its clickbait filter ----------------------- */
+
+/*
+ * The clickbait filter fires on NOTHING in the live feed, and that needs
+ * proving rather than asserting.
+ *
+ * A rule that never fires is indistinguishable from a rule that cannot fire
+ * (family #2), and here the innocent explanation — the roster is curated, so
+ * these creators do not do this — happens to be true. The way to tell the two
+ * apart is to exercise it against cases it SHOULD catch and cases it must not.
+ *
+ * The must-not list is the important half: it holds the roster's real titles,
+ * including every "Top N" one. Keying the filter on ranked listicles was the
+ * obvious design and would have thrown away "2026 Fantasy WR Rankings" and
+ * "Top 50 Fantasy Stats" — the rankings ARE the work. The signal is a WITHHELD
+ * payoff, not a list.
+ */
+const CLICKBAIT_CASES: Array<[string, boolean]> = [
+  ['Top 5 RBs to draft — stay tuned for number 1!', true],
+  ['My top 5 WRs, you WONT BELIEVE who is first', true],
+  ['The SECRET stat nobody is talking about in fantasy', true],
+  ['Watch till the end for my #1 sleeper', true],
+  ['The TRUTH about Bijan Robinson', true],
+  ['Top 5 Offensive Coordinators for Fantasy', false],
+  ['2026 Fantasy WR Rankings!', false],
+  ['Top 50 Fantasy Stats of 2026', false],
+  ['Dalton Kincaid has INSANE Upside', false],
+  ['Perception vs Reality: Finding Draft Values', false],
+  ['Top 10 Fantasy Football Flag Plants to Win Your League', false],
+];
+
+console.log('\nCLICKBAIT FILTER');
+console.log('  it drops a withheld payoff, never a ranked list — both directions tested\n');
+let bad = 0;
+for (const [title, shouldVeto] of CLICKBAIT_CASES) {
+  const got = !!assessCreatorItem(title, null).clickbait;
+  if (got !== shouldVeto) {
+    bad++;
+    console.log(`  WRONG  ${got ? 'dropped' : 'kept'}: ${title}`);
+  }
+}
+console.log(
+  bad === 0
+    ? `  ${CLICKBAIT_CASES.length}/${CLICKBAIT_CASES.length} — fires on deferral, keeps every "Top N" on the roster`
+    : `  ${bad} of ${CLICKBAIT_CASES.length} wrong`,
+);
+
+const creatorRows = sqlite
+  .prepare(
+    `SELECT source, COUNT(*) n,
+            SUM(CASE WHEN category_basis LIKE 'clickbait%' THEN 1 ELSE 0 END) cb
+     FROM news_item WHERE source LIKE 'creator:%' GROUP BY source ORDER BY source`,
+  )
+  .all() as Array<{ source: string; n: number; cb: number }>;
+
+if (creatorRows.length) {
+  console.log('\nCREATOR ROSTER');
+  for (const c of creatorRows) {
+    const slug = c.source.slice('creator:'.length);
+    const name = CREATORS.find((x) => x.slug === slug)?.name ?? slug;
+    console.log(`  ${name.padEnd(22)} ${String(c.n).padStart(3)} videos, ${c.cb} dropped as clickbait`);
+  }
+  const total = creatorRows.reduce((a, c) => a + c.n, 0);
+  const dropped = creatorRows.reduce((a, c) => a + c.cb, 0);
+  console.log(
+    `\n  ${dropped} of ${total} dropped. Zero is the expected reading for a curated roster — ` +
+      `curation is the filter, and the rule above is the guard against a bad day.`,
   );
 }

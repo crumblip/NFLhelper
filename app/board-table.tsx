@@ -183,7 +183,7 @@ export default function BoardTable({ rows }: { rows: BoardRow[] }) {
             had a role
           </button>
         </Tip>
-        <Tip content="Players who did NOT hold a real role last season — under 10 games or under 80 points. Late in the draft these are lottery tickets, and where they go in the draft barely predicts what they return, so judge them on role and opportunity rather than on price.">
+        <Tip content="Players who did NOT hold a real role last season, under 10 games or under 80 points. Late in the draft these are lottery tickets, and where they go in the draft barely predicts what they return, so judge them on role and opportunity rather than on price.">
           <button
             className="chip"
             data-on={roleFilter === 'unproven'}
@@ -208,7 +208,7 @@ export default function BoardTable({ rows }: { rows: BoardRow[] }) {
       {activeTagInfo && (
         <div className="tagfilter">
           Showing only players tagged <strong>{activeTagInfo.label}</strong>
-          {' — '}
+          {' · '}
           {activeTagInfo.detail}
           <button className="chip" onClick={() => setActiveTag(null)}>clear</button>
         </div>
@@ -226,18 +226,18 @@ export default function BoardTable({ rows }: { rows: BoardRow[] }) {
               {header('impliedPoints', 'Impl pts', 'What the sportsbooks are pricing him at, scored under this league’s rules. Taken from real posted lines, never from someone’s ranking.')}
               {header('adpEquivalent', 'ADP eq', 'The pick where that kind of season is normally worth spending. If this is lower than his ADP, he is cheap.')}
               {header('slotGap', 'Slot gap', 'How many picks of value he is against where he is going. Positive means you are getting more than the pick usually returns.')}
-              {header('usageGrade', 'Usage', 'How big his role was last season, ranked against his own position from 0 to 100. Touches, targets, snaps and goal-line work — what the coaches actually gave him.')}
+              {header('usageGrade', 'Usage', 'How big his role was last season, ranked against his own position from 0 to 100. Touches, targets, snaps and goal-line work, what the coaches actually gave him.')}
               {header('usageGap', 'vs mkt', 'His role rank minus his price rank. Positive means he did more on the field than he is being paid for.')}
-              {header('blendedVorp', 'VALUE', 'Points he gains you over the best player you could grab for free at his position. Use it in the first three rounds — that is where it does its work. After that it fades fast, and by round seven it is telling you almost nothing, because nearly everyone left projects below that bar.')}
-              {header('blendedSlotGap', 'Gap vs ADP', 'Whether he is cheap for where he is going — a different question from whether he is good. Trust it in the first three rounds. Through the middle rounds ignore it: it reads positive for four players in five no matter who they are, and everything else weakens there too.')}
-              {header('vona', 'VONA', 'How much you lose by waiting. If you pass on him now, this is how far the next player at his position — the best one likely to still be there at your next pick — falls short of him. A big number means the position drops off a cliff right behind him, so take him now. A small number means you can wait and take someone else first.')}
-              {header('startableRate', 'Start %', 'How many weeks of the season he should actually be worth starting — finishing inside the top 12 QBs, 24 RBs, 36 WRs or 12 TEs that week. Missed weeks count against him. This is the same projection said a different way, not a separate opinion, but a season total hides it: two players can score the same and one of them is startable twice as often.')}
+              {header('blendedVorp', 'VALUE', 'Points he gains you over the best player you could grab for free at his position. Use it in the first three rounds, that is where it does its work. After that it fades fast, and by round seven it is telling you almost nothing, because nearly everyone left projects below that bar.')}
+              {header('blendedSlotGap', 'Gap vs ADP', 'Whether he is cheap for where he is going, a different question from whether he is good. Trust it in the first three rounds. Through the middle rounds ignore it: it reads positive for four players in five no matter who they are, and everything else weakens there too.')}
+              {header('vona', 'VONA', 'How much you lose by waiting. If you pass on him now, this is how far the next player at his position, the best one likely to still be there at your next pick, falls short of him. A big number means the position drops off a cliff right behind him, so take him now. A small number means you can wait and take someone else first.')}
+              {header('startableRate', 'Start %', 'How many weeks of the season he should actually be worth starting, finishing inside the top 12 QBs, 24 RBs, 36 WRs or 12 TEs that week. Missed weeks count against him. This is the same projection said a different way, not a separate opinion, but a season total hides it: two players can score the same and one of them is startable twice as often.')}
               {/*
                 One column, not two.
 
                 UPSIDE and BUST were one measurement shown twice: ranked within
                 position and band they correlate −0.87, and NEITHER survives the
-                other — the partial of upside after bust is .020 pooled, bust
+                other, the partial of upside after bust is .020 pooled, bust
                 after upside −.051. Two columns of one number invited a reader to
                 count it as two reasons to like or avoid someone.
 
@@ -247,7 +247,7 @@ export default function BoardTable({ rows }: { rows: BoardRow[] }) {
                 halves still appear on the hover, as explanation rather than as
                 separate evidence.
               */}
-              {header('outlookPctile', 'OUTLOOK', 'How players who looked like him turned out, on one scale from bust to breakout. 0 means almost all of them disappointed, 100 means almost all of them hit. Ranked against other players at HIS position going around the same time, because the raw rates are not comparable between positions. WHERE TO USE IT: from round 11 on it is the best column on this board, twice as good as draft order at picking out who returns value. Through the middle rounds it is not worth reading — nothing on this board is, which is a fact about the middle of the draft rather than about this column.')}
+              {header('outlookPctile', 'OUTLOOK', 'How players who looked like him turned out, on one scale from bust to breakout. 0 means almost all of them disappointed, 100 means almost all of them hit. Ranked against other players at HIS position going around the same time, because the raw rates are not comparable between positions. WHERE TO USE IT: from round 11 on it is the best column on this board, twice as good as draft order at picking out who returns value. Through the middle rounds it is not worth reading, nothing on this board is, which is a fact about the middle of the draft rather than about this column.')}
             </tr>
           </thead>
           <tbody>
@@ -267,8 +267,8 @@ export default function BoardTable({ rows }: { rows: BoardRow[] }) {
                     at the far right of sixteen numeric ones) and as a second
                     line under the name. Both cost vertical space on every row
                     to show a sentence that is identical for large groups of
-                    players — 48 of 185 read "the case cuts both ways at this
-                    price" — so the board paid for it 185 times and learned
+                    players, 48 of 185 read "the case cuts both ways at this
+                    price", so the board paid for it 185 times and learned
                     something new about 11 of them.
 
                     A board is for ranking; the read is for one player at a
@@ -312,7 +312,7 @@ export default function BoardTable({ rows }: { rows: BoardRow[] }) {
                       VALUE, encoded by LENGTH rather than by a coloured box.
 
                       A filled pill says "this number is important" and nothing
-                      else — it cannot show that +133 is four times +33, so the
+                      else, it cannot show that +133 is four times +33, so the
                       reader has to read every figure to rank them. A bar does
                       that at a glance, and length is the strongest visual
                       encoding there is; colour is left carrying only the sign,
@@ -380,7 +380,7 @@ export default function BoardTable({ rows }: { rows: BoardRow[] }) {
                           `Built from two halves that are 87% mirror images of each other, averaged: ` +
                           `${r.breakoutRate !== null ? `${Math.round(r.breakoutRate * 100)}% of the players who looked like him finished top-12 at the position` : 'top-12 rate unavailable'}` +
                           `${r.bustRate !== null ? `, and ${Math.round(r.bustRate * 100)}% were worth less than a free ${r.position}` : ''}. ` +
-                          `Those two are one measurement, not two — neither tells you anything the other has not already said.`
+                          `Those two are one measurement, not two, neither tells you anything the other has not already said.`
                         }
                       >
                         <span
@@ -404,7 +404,7 @@ export default function BoardTable({ rows }: { rows: BoardRow[] }) {
 
         Fourteen lines of prose under the table explained what every column
         meant to a reader who, by the time they had scrolled past the board to
-        reach it, had already worked most of it out — and it cost a screen of
+        reach it, had already worked most of it out, and it cost a screen of
         players to say so. Every column heading already carries the same
         explanation on hover, where the question is actually asked, and the
         legend page carries the long form.

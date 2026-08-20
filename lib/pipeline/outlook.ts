@@ -93,6 +93,43 @@ export function buildOutlooks(format: string, teams: number, season: number): Ou
     appearances.set(`${r.player_id}|${r.season}`, r.g);
   }
 
+  /*
+   * A player with NO snap rows at all falls back to weeks with a stat line.
+   *
+   * `?? 0` was reading "we have no snap data for this man" as "he did not
+   * play", and then the games floor dropped him. **Chase Brown, ADP 15, 17
+   * games and a 61% rush share, had no outlook at all** — nflverse's 2025 snap
+   * counts carry two rows for the entire Cincinnati backfield while listing 23
+   * for their quarterbacks and 82 for their receivers, so the gap is upstream
+   * and nothing we can fix at the source.
+   *
+   * This does NOT reintroduce bug #40. That bug was about preferring the better
+   * source: `player_usage.games` counts games with a stat line, so a healthy
+   * backup who caught one pass looks like an injured starter, and snap
+   * appearances are the honest measure of turning up. That argument still
+   * holds and snap counts still win wherever they exist. It says nothing about
+   * what to do when the source is *absent*, and treating absence as a measured
+   * zero is family #6 — a missing reading rendered as a finding.
+   *
+   * Only whole-season absence falls back. A player with 3 snap rows genuinely
+   * played 3 games, and taking the larger of the two numbers would quietly
+   * restore #40 for everyone.
+   */
+  const statLineWeeks = sqlite
+    .prepare(
+      `SELECT player_id, season, COUNT(DISTINCT week) g FROM player_stats_week
+       WHERE season_type = 'REG' GROUP BY player_id, season`,
+    )
+    .all() as Array<{ player_id: string; season: number; g: number }>;
+  let recovered = 0;
+  for (const r of statLineWeeks) {
+    const key = `${r.player_id}|${r.season}`;
+    if (appearances.has(key)) continue;
+    appearances.set(key, r.g);
+    recovered++;
+  }
+  void recovered;
+
   const weeksPlayed = (
     sqlite
       .prepare(

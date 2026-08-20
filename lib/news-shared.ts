@@ -51,9 +51,9 @@ export const CATEGORY_BLURB: Record<NewsCategory, string> = {
   role: 'Who is starting, who is getting the touches.',
   scheme: 'A coach describing how the offence will be run.',
   transaction: 'Signed, traded, cut, suspended, activated.',
-  analysis: 'Somebody else’s fantasy read — rankings, draft takes, sleepers.',
+  analysis: 'Somebody else’s fantasy read: rankings, draft takes, sleepers.',
   performance: 'What he actually did in a game or a practice.',
-  general: 'Nothing matched — set aside rather than scored low.',
+  general: 'Nothing matched, so it is set aside rather than scored low.',
 };
 
 /**
@@ -87,6 +87,27 @@ export const SOURCE_LABEL: Record<string, string> = {
   rotowire: 'RotoWire',
   yahoo: 'Yahoo Sports',
 };
+
+/** True for an item from the curated creator roster. */
+export function isCreatorSource(source: string): boolean {
+  return source.startsWith('creator:');
+}
+
+/**
+ * The name to print for a source.
+ *
+ * Creator sources are stored as `creator:<slug>` so one prefix check tells the
+ * pipeline which route an item took. The reader should never see that — the
+ * slug is turned back into the creator's name by the caller, which passes the
+ * roster in rather than importing it, keeping this file free of imports.
+ */
+export function sourceLabel(source: string, creatorNames: Record<string, string>): string {
+  if (isCreatorSource(source)) {
+    const slug = source.slice('creator:'.length);
+    return creatorNames[slug] ?? slug;
+  }
+  return SOURCE_LABEL[source] ?? source;
+}
 
 /** Relative time in the words a reader uses, rather than a timestamp. */
 export function ago(ts: number | null | undefined): string {

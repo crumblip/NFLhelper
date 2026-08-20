@@ -131,17 +131,17 @@ export function riskNotes(r: RiskProfile | undefined): string[] {
 
   if (r.seasonsObserved >= 1) {
     if (r.expectedGames <= 12.5) {
-      notes.push(`durability risk — ${r.expectedGames.toFixed(1)} games/yr`);
+      notes.push(`durability risk, ${r.expectedGames.toFixed(1)} games/yr`);
     } else if (r.expectedGames <= 14.5) {
-      notes.push(`some missed time — ${r.expectedGames.toFixed(1)} games/yr`);
+      notes.push(`some missed time, ${r.expectedGames.toFixed(1)} games/yr`);
     }
   }
 
   if (r.tdOverExpected !== null) {
     if (r.tdOverExpected >= 2.5) {
-      notes.push(`TD regression — scored ${r.tdOverExpected.toFixed(1)} above red-zone volume`);
+      notes.push(`TD regression, scored ${r.tdOverExpected.toFixed(1)} above red-zone volume`);
     } else if (r.tdOverExpected <= -2.0) {
-      notes.push(`TD positive regression — ${Math.abs(r.tdOverExpected).toFixed(1)} below volume`);
+      notes.push(`TD positive regression, ${Math.abs(r.tdOverExpected).toFixed(1)} below volume`);
     }
   }
 

@@ -7,7 +7,7 @@ const TEAMS = Number(process.env.LEAGUE_TEAMS ?? 12);
 const FORMAT = process.env.SCORING_FORMAT ?? 'half-ppr';
 
 export const metadata = {
-  title: 'League — NFLhelper',
+  title: 'League · ChipShip',
   description: 'Connected Yahoo league: teams, managers and rosters',
 };
 
@@ -49,7 +49,7 @@ export default function LeaguePage() {
       {!drafted ? (
         <div className="notice">
           <strong>This league has not drafted yet.</strong> Rosters are empty or partial, so
-          ownership cannot answer who is available — it would report everyone as free, which is
+          ownership cannot answer who is available, it would report everyone as free, which is
           true and useless. Until the draft is done the wire keeps using national ADP to decide
           who is undrafted, and says so at the top of the page. Re-run{' '}
           <code>npm run ingest:yahoo</code> afterwards and it switches over on its own.
@@ -61,7 +61,7 @@ export default function LeaguePage() {
           <strong>Team count does not match.</strong> This league has {league.numTeams} teams and
           the board is built for {TEAMS} ({FORMAT}). Replacement level moves with team count, so
           VALUE is measuring a different league than this one until <code>LEAGUE_TEAMS</code> is
-          changed to match — note that changing it invalidates the baseline curve and needs a{' '}
+          changed to match, note that changing it invalidates the baseline curve and needs a{' '}
           <code>npm run refresh</code>.
         </div>
       ) : null}
@@ -84,7 +84,7 @@ export default function LeaguePage() {
               </header>
 
               {roster.length === 0 ? (
-                <p className="muted empty">No players — this team has not drafted.</p>
+                <p className="muted empty">No players, this team has not drafted.</p>
               ) : (
                 <ul className="roster">
                   {roster.map((p) => (
@@ -137,8 +137,8 @@ function NotConnected() {
         <ol className="steps">
           <li>
             Register an app at <code>developer.yahoo.com/apps/create/</code> with{' '}
-            <strong>Fantasy Sports — Read</strong> permission. The redirect URI must be HTTPS;
-            Yahoo rejects a bare <code>localhost</code>, but it does not have to work — the code
+            <strong>Fantasy Sports. Read</strong> permission. The redirect URI must be HTTPS;
+            Yahoo rejects a bare <code>localhost</code>, but it does not have to work, the code
             you need appears in the address bar either way.
           </li>
           <li>

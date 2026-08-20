@@ -113,7 +113,7 @@ export function str(v: Any): string | null {
 
 export class YahooClient {
   private creds: YahooCredentials;
-  /** Requests made this run — printed by the ingest so usage stays visible. */
+  /** Requests made this run, printed by the ingest so usage stays visible. */
   requests = 0;
 
   constructor(creds?: YahooCredentials) {

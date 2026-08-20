@@ -377,7 +377,7 @@ export interface RegistryPlayer {
   normalized: string;
   position: string;
   espnId: string | null;
-  /** His team NOW — the depth chart's answer, not last season's usage row. */
+  /** His team NOW, the depth chart's answer, not last season's usage row. */
   team: string | null;
   /** True when he is on a current depth chart or carries an ADP. */
   current: boolean;
@@ -580,10 +580,24 @@ export function resolveMentions(
     const name = a.name.trim();
     if (!name) continue;
 
+    /*
+     * A RESOLVED mention is stored under the player's canonical display name,
+     * not under whatever the source called him.
+     *
+     * Two reasons, and the second is the one that bites. A creator's subject
+     * arrives as a hashtag — `#jamescook`, `#amonrastbrown` — so keying on the
+     * raw string renders a chip reading "amonrastbrown" at the reader. And
+     * because the row key is (news_id, raw_name), one item naming a man in both
+     * a hashtag and its prose stored him twice, as two different people.
+     * Canonicalising fixes the display and collapses the duplicate at once.
+     *
+     * The raw string is kept only when nothing resolved, where it is the only
+     * information there is.
+     */
     const byId = a.espnId ? reg.byEspn.get(String(a.espnId)) : undefined;
     if (byId) {
-      out.set(name, {
-        playerId: byId.playerId, rawName: name, position: byId.position,
+      out.set(byId.playerId, {
+        playerId: byId.playerId, rawName: byId.name, position: byId.position,
         team: byId.team, method: 'espn_id', isTeamLevel: false,
       });
       continue;
@@ -595,8 +609,8 @@ export function resolveMentions(
     // who last played in 2014.
     const pick = cands.find((c) => c.current) ?? cands[0];
     if (pick) {
-      out.set(name, {
-        playerId: pick.playerId, rawName: name, position: pick.position,
+      out.set(pick.playerId, {
+        playerId: pick.playerId, rawName: pick.name, position: pick.position,
         team: pick.team, method: 'name', isTeamLevel: false,
       });
     } else {
@@ -604,6 +618,9 @@ export function resolveMentions(
       // project does not model? That is a correct exclusion, and saying so is
       // the difference between a clean run and 33 phantom failures.
       const norm = normalizeName(name);
+      // A guess that did not land is not a finding. Hashtags are ours, not the
+      // source's, so an unresolved one is dropped rather than filed as a miss.
+      if (a.speculative) continue;
       const known =
         (a.espnId && reg.outOfScope.byEspn.has(String(a.espnId))) ||
         reg.outOfScope.byName.has(norm);
@@ -621,7 +638,7 @@ export function resolveMentions(
     const hay = `${item.headline} ${item.body ?? ''}`;
     for (const p of reg.current) {
       if (!hay.includes(p.name)) continue;
-      out.set(p.name, {
+      out.set(p.playerId, {
         playerId: p.playerId, rawName: p.name, position: p.position,
         team: p.team, method: 'name', isTeamLevel: false,
       });

@@ -37,7 +37,7 @@ function Row({ r }: { r: InjuryRow }) {
             {r.name}
           </a>
         ) : (
-          <Tip content="This name did not match the player index, so there is no page for him. He is still listed — dropping him would make the report quietly incomplete.">
+          <Tip content="This name did not match the player index, so there is no page for him. He is still listed, dropping him would make the report quietly incomplete.">
             <span className="inj-name" tabIndex={0} style={{ cursor: 'help' }}>
               {r.name}
             </span>
@@ -136,7 +136,7 @@ export default function InjuryBoard({ rows, meta }: { rows: InjuryRow[]; meta: I
           Drafted only
         </button>
 
-        <Tip content="“Active” means carrying a knock and still expected to play — most of the report. Turning this off shows them.">
+        <Tip content="“Active” means carrying a knock and still expected to play, most of the report. Turning this off shows them.">
           <button className="chip" data-on={hideActive} onClick={() => setHideActive((v) => !v)}>
             Hide “expected to play”
             {hiddenActive ? <b> {hiddenActive}</b> : null}
@@ -182,7 +182,7 @@ export default function InjuryBoard({ rows, meta }: { rows: InjuryRow[]; meta: I
         <div className="notice">
           <strong>Nobody matches.</strong>{' '}
           {hideActive
-            ? 'Every listed player on this filter is expected to play — which is good news, not a missing report. Turn off “Hide expected to play” to see them.'
+            ? 'Every listed player on this filter is expected to play, which is good news, not a missing report. Turn off “Hide expected to play” to see them.'
             : 'No rows for these filters.'}
         </div>
       ) : (

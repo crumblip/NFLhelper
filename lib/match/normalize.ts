@@ -24,7 +24,7 @@ export function normalizeName(input: string): string {
     .replace(/\s+/g, '');
 }
 
-/** Keeps word boundaries — used for initial+surname matching. */
+/** Keeps word boundaries, used for initial+surname matching. */
 export function nameTokens(input: string): string[] {
   return input
     .normalize('NFD')
@@ -71,7 +71,7 @@ export function normalizeTeam(input: string | null | undefined): string | null {
   return TEAM_ALIASES[up] ?? up;
 }
 
-/** RB/WR/TE/QB only — everything else is out of scope by design. */
+/** RB/WR/TE/QB only, everything else is out of scope by design. */
 export const SCOPED_POSITIONS = new Set(['QB', 'RB', 'WR', 'TE']);
 
 export function normalizePosition(input: string | null | undefined): string | null {

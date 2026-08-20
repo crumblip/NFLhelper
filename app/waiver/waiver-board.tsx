@@ -13,7 +13,7 @@ type SortKey = 'grade' | 'vacated' | 'points' | 'name' | 'age' | 'depthRank' | '
 const pct = (v: number | null | undefined) =>
   v === null || v === undefined ? '—' : `${Math.round(v * 100)}%`;
 
-/** Bars are read against a realistic ceiling, not 100% — nobody holds 100%. */
+/** Bars are read against a realistic ceiling, not 100%, nobody holds 100%. */
 const BAR_MAX: Record<string, number> = { involvement: 0.35, rz: 0.3, vacated: 0.5 };
 
 function Stat({ label, value, max, tone }: { label: string; value: number | null; max: number; tone?: string }) {
@@ -76,8 +76,8 @@ function WaiverCard({ r }: { r: WaiverRow }) {
       <a
         className="wcard"
         href={`/player/${r.playerId}`}
-        /* Without this the link's name is the whole card — "TE Cade Otton TB ·
-           TE1 · 27 89 GRADE TARGET 17%…" — which is unusable read aloud. */
+        /* Without this the link's name is the whole card, "TE Cade Otton TB ·
+           TE1 · 27 89 GRADE TARGET 17%…", which is unusable read aloud. */
         aria-label={`${r.name}, ${r.position}${r.depthRank ?? ''} ${teamOf(r.team).nick}, usage grade ${r.grade}`}
         style={{ ...teamStyle(r.team), ['--pos-color' as string]: positionColor(r.position) }}
       >
@@ -243,7 +243,7 @@ export default function WaiverBoard({ rows, meta }: { rows: WaiverRow[]; meta: W
             <>
               Below the floor sits anyone under <strong>{meta.minInvolvement * 100}% involvement</strong> or
               under <strong>{meta.minGames} games</strong> last season. That is not a judgment that
-              they are bad — it is that there is too little evidence to judge them at all. Blocking
+              they are bad, it is that there is too little evidence to judge them at all. Blocking
               fullbacks and one-game samples both land here.
             </>
           }
@@ -267,7 +267,7 @@ export default function WaiverBoard({ rows, meta }: { rows: WaiverRow[]; meta: W
         blurb={
           meta.live
             ? `A quarter or more of the work he competes for belongs to teammates who did not play in week ${meta.week}, and he is listed within his position's rotation to inherit it. His own snap share is not falling.`
-            : 'Volume has left the roster, nobody arriving has claimed it, and he is listed within his position’s rotation to inherit it. This is the profile behind almost every pickup that mattered — the work opened up, not the player improved.'
+            : 'Volume has left the roster, nobody arriving has claimed it, and he is listed within his position’s rotation to inherit it. This is the profile behind almost every pickup that mattered, the work opened up, not the player improved.'
         }
         rows={priority}
         empty={
@@ -279,7 +279,7 @@ export default function WaiverBoard({ rows, meta }: { rows: WaiverRow[]; meta: W
 
       <Tier
         title="One injury away"
-        blurb="What he is worth if the man ahead of him stops playing, multiplied by the chance that happens. Vulnerability comes from the blocker's durability — a player who missed four or more games misses again 73% of the time — plus age past the position curve and weak play. These are the picks whose average is a bad description of them: irrelevant most weeks, a starter the moment the job opens."
+        blurb="What he is worth if the man ahead of him stops playing, multiplied by the chance that happens. Vulnerability comes from the blocker's durability, a player who missed four or more games misses again 73% of the time, plus age past the position curve and weak play. These are the picks whose average is a bad description of them: irrelevant most weeks, a starter the moment the job opens."
         rows={lottery}
         empty="Nobody undrafted is sitting close enough behind a vulnerable starter to be worth the roster spot."
       />
@@ -293,7 +293,7 @@ export default function WaiverBoard({ rows, meta }: { rows: WaiverRow[]; meta: W
 
       {meta.live && (
         <Tier
-          title="Role shrinking — drop candidates"
+          title="Role shrinking, drop candidates"
           blurb="His snap share over the last three games sits 15 points or more below his own season average. Measured against 2018–2025, that group scores 1.23 fewer points per game for the rest of the season. This is the one direction of travel that predicts, which is why there is no matching tier for players trending up."
           rows={shrinking}
           empty="Nobody with a real role is losing snaps sharply right now."
@@ -304,8 +304,8 @@ export default function WaiverBoard({ rows, meta }: { rows: WaiverRow[]; meta: W
         title="Best available by role"
         blurb={
           meta.live
-            ? 'Highest usage grade regardless of opportunity — the biggest roles among players nobody rosters.'
-            : 'Highest usage grade regardless of opportunity — players who were already doing real work last season and still go undrafted.'
+            ? 'Highest usage grade regardless of opportunity, the biggest roles among players nobody rosters.'
+            : 'Highest usage grade regardless of opportunity, players who were already doing real work last season and still go undrafted.'
         }
         rows={best}
         empty="No players clear the evidence floor with the current filters."
@@ -315,7 +315,7 @@ export default function WaiverBoard({ rows, meta }: { rows: WaiverRow[]; meta: W
         The filter has to be WHERE THE LIST IS.
 
         Position chips and the search box sit in the controls row at the top of
-        the page — and then five tier sections run between them and this table,
+        the page, and then five tier sections run between them and this table,
         so by the time a reader reaches the list of everyone available the
         filter is a couple of thousand pixels behind them. Narrowing to tight
         ends meant scrolling back up, filtering, and scrolling down again.
@@ -324,7 +324,7 @@ export default function WaiverBoard({ rows, meta }: { rows: WaiverRow[]; meta: W
         places rather than two filters that can disagree.
       */}
       <div className="listhead">
-        <h2>Everyone available — {sorted.length} players</h2>
+        <h2>Everyone available, {sorted.length} players</h2>
         <div className="listfilter">
           {POSITIONS.map((p) => (
             <button
@@ -353,7 +353,7 @@ export default function WaiverBoard({ rows, meta }: { rows: WaiverRow[]; meta: W
             <tr>
               {header('name', 'Player')}
               <th className="l">Team</th>
-              {header('depthRank', 'Depth', 'Where he is listed on his own position’s depth chart. A kick-return listing is ignored — taking the best rank across all listings once reported Dylan Sampson as a returner rather than the RB2 he is.')}
+              {header('depthRank', 'Depth', 'Where he is listed on his own position’s depth chart. A kick-return listing is ignored, taking the best rank across all listings once reported Dylan Sampson as a returner rather than the RB2 he is.')}
               {header('age', 'Age')}
               {header('games', 'G')}
               {header('points', 'Proj', 'Fitted points from the usage model. It regresses hard toward the positional mean, so read the grade rather than setting this against a market number.')}
@@ -374,7 +374,7 @@ export default function WaiverBoard({ rows, meta }: { rows: WaiverRow[]; meta: W
                         <a className="name" href={`/player/${r.playerId}`}>{r.name}</a>
                       </PlayerHover>
                       {!r.qualified && (
-                        <Tip content="Too little evidence to judge — under the involvement or games floor.">
+                        <Tip content="Too little evidence to judge, under the involvement or games floor.">
                           <span className="flag">thin</span>
                         </Tip>
                       )}
@@ -397,7 +397,7 @@ export default function WaiverBoard({ rows, meta }: { rows: WaiverRow[]; meta: W
                     <span className={`gap ${r.vacated >= 0.2 ? 'pos' : 'na'}`}>{pct(r.vacated)}</span>
                   </td>
                   <td className="l readcell">
-                    {/* Available, but not a free add — a claim that resolves on a date. */}
+                    {/* Available, but not a free add, a claim that resolves on a date. */}
                     {r.onWaiversUntil !== null && (
                       <span className="tag k-risk">
                         waivers{r.onWaiversUntil ? ` until ${r.onWaiversUntil}` : ''}
@@ -426,7 +426,7 @@ export default function WaiverBoard({ rows, meta }: { rows: WaiverRow[]; meta: W
                       .filter((n) => !n.startsWith('role shrinking'))
                       .map((n) => (
                         <span className="tag k-risk" key={n}>
-                          {n.split(' — ')[0]}
+                          {n.split(', ')[0]}
                         </span>
                       ))}
                     {!r.priority && !r.youngPath && !r.roleShrinking && r.grade < 70 &&
@@ -442,7 +442,7 @@ export default function WaiverBoard({ rows, meta }: { rows: WaiverRow[]; meta: W
       <p className="legend">
         Everyone here is <strong>undrafted in a {12}-team half-PPR league</strong> and had a
         measurable role last season. <code>Vacated</code> is the share of the work he competes for
-        that left the roster, net of what arriving players have already claimed — a team that lost
+        that left the roster, net of what arriving players have already claimed, a team that lost
         its lead back and signed another one has nothing available.{' '}
         <code>Grade</code> is his role last season ranked against his position. Neither is a
         projection you should set against a sportsbook line; off the board there is no price, so the

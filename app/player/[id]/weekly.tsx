@@ -67,8 +67,8 @@ export default function WeeklyBars({
             key={w.week}
             content={
               w.points === null
-                ? `Week ${w.week} — did not play`
-                : `Week ${w.week} — ${w.points.toFixed(1)} points, ${
+                ? `Week ${w.week}, did not play`
+                : `Week ${w.week}, ${w.points.toFixed(1)} points, ${
                     w.points >= threshold ? 'above' : 'below'
                   } the ${threshold.toFixed(0)}-point line`
             }
